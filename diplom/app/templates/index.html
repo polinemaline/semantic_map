@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Главная — Термин-Анализ MVP{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-text">
+        <h1>Минимальный MVP для анализа терминов в ГОСТах</h1>
+        <p>
+            Система загружает PDF/DOCX, извлекает текст, пытается найти пары
+            «термин — определение», сохраняет данные в SQLite и показывает,
+            где определения одного и того же термина совпадают или различаются.
+        </p>
+        <div class="hero-actions">
+            <a class="button" href="{{ url_for('main.upload') }}">Загрузить документ</a>
+            <a class="button button-secondary" href="{{ url_for('main.compare') }}">Посмотреть конфликты</a>
+        </div>
+    </div>
+</section>
+
+<section class="stats-grid">
+    <article class="card stat-card">
+        <div class="stat-number">{{ stats.documents_count }}</div>
+        <div class="stat-label">Документов</div>
+    </article>
+    <article class="card stat-card">
+        <div class="stat-number">{{ stats.terms_count }}</div>
+        <div class="stat-label">Терминов</div>
+    </article>
+    <article class="card stat-card">
+        <div class="stat-number">{{ stats.definitions_count }}</div>
+        <div class="stat-label">Уникальных определений</div>
+    </article>
+    <article class="card stat-card">
+        <div class="stat-number">{{ stats.conflicts_count }}</div>
+        <div class="stat-label">Конфликтующих терминов</div>
+    </article>
+</section>
+
+<section class="card">
+    <div class="section-header">
+        <h2>Последние документы</h2>
+        <a class="link" href="{{ url_for('main.documents') }}">Все документы</a>
+    </div>
+
+    {% if recent_documents %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Файл</th>
+                        <th>Формат</th>
+                        <th>Терминов</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in recent_documents %}
+                        <tr>
+                            <td>{{ doc.title }}</td>
+                            <td>{{ doc.original_filename }}</td>
+                            <td>{{ doc.file_type|upper }}</td>
+                            <td>{{ doc.extracted_pairs_count }}</td>
+                            <td>
+                                <a class="link" href="{{ url_for('main.document_detail', document_id=doc.id) }}">
+                                    Открыть
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-text">Пока нет загруженных документов.</p>
+    {% endif %}
+</section>
+{% endblock %}

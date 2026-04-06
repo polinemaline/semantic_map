@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Загрузка документа{% endblock %}
+
+{% block content %}
+<section class="card narrow-card">
+    <h1>Загрузка документа</h1>
+    <p class="muted">
+        Для MVP поддерживаются текстовые PDF и DOCX. После загрузки система
+        сохранит текст документа и попытается автоматически извлечь термины и определения.
+    </p>
+
+    <form class="form" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="title">Название документа (необязательно)</label>
+            <input id="title" name="title" type="text" placeholder="Например: ГОСТ 123-2025">
+        </div>
+
+        <div class="form-group">
+            <label for="file">Файл</label>
+            <input id="file" name="file" type="file" accept=".pdf,.docx" required>
+        </div>
+
+        <button class="button" type="submit">Загрузить и обработать</button>
+    </form>
+</section>
+{% endblock %}

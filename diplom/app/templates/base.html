@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ИС терминологического анализа{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="container topbar-inner">
+            <a class="brand" href="{{ url_for('main.index') }}">Термин-Анализ MVP</a>
+
+            <nav class="nav">
+                <a href="{{ url_for('main.index') }}">Главная</a>
+                <a href="{{ url_for('main.upload') }}">Загрузка</a>
+                <a href="{{ url_for('main.documents') }}">Документы</a>
+                <a href="{{ url_for('main.terms') }}">Термины</a>
+                <a href="{{ url_for('main.compare') }}">Сравнение</a>
+                <a href="{{ url_for('main.report') }}">Отчет</a>
+                <a href="{{ url_for('main.semantic_map') }}">Семантическая карта</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container page">
+        {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

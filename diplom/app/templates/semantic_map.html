@@ -1,0 +1,701 @@
+{% extends "base.html" %}
+
+{% block title %}Семантическая карта{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h1>Семантическая карта</h1>
+            <p class="muted">
+                Карта показывает связи «документ → термин → определение», а также
+                связи «определение → термин», если другой термин встречается внутри определения.
+            </p>
+        </div>
+    </div>
+
+    <form class="map-filter-form" method="get">
+        <div class="form-group">
+            <label for="document_id">Карта по документу</label>
+            <select id="document_id" name="document_id">
+                <option value="">Не выбрано</option>
+                {% for doc in documents %}
+                    <option
+                        value="{{ doc.id }}"
+                        {% if selected_document_id == doc.id %}selected{% endif %}
+                    >
+                        {{ doc.title }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="term_id">Карта по термину</label>
+            <select id="term_id" name="term_id">
+                <option value="">Не выбрано</option>
+                {% for term in terms %}
+                    <option
+                        value="{{ term.id }}"
+                        {% if selected_term_id == term.id %}selected{% endif %}
+                    >
+                        {{ term.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="page-actions">
+            <button class="button" type="submit">Построить карту</button>
+            <a class="button button-secondary" href="{{ url_for('main.semantic_map') }}">Сбросить</a>
+        </div>
+    </form>
+</section>
+
+{% if map_summary.mode != "empty" %}
+<section class="stats-grid">
+    <article class="card stat-card">
+        <div class="stat-number">{{ map_summary.documents_count }}</div>
+        <div class="stat-label">Документов</div>
+    </article>
+    <article class="card stat-card">
+        <div class="stat-number">{{ map_summary.terms_count }}</div>
+        <div class="stat-label">Терминов на карте</div>
+    </article>
+    <article class="card stat-card">
+        <div class="stat-number">{{ map_summary.definitions_count }}</div>
+        <div class="stat-label">Определений</div>
+    </article>
+    <article class="card stat-card">
+        <div class="stat-number">{{ map_summary.links_count }}</div>
+        <div class="stat-label">Связей</div>
+    </article>
+</section>
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h2>{{ map_summary.title }}</h2>
+            <p class="muted">
+                Красный — термин с разными определениями. Зеленый — термин встречается в нескольких документах.
+                Синий — документ. Фиолетовый — определение. Бирюзовый — термин, найденный внутри определения.
+            </p>
+        </div>
+    </div>
+
+    <div class="map-toolbar">
+        <div class="map-toolbar-group">
+            <button class="button button-secondary map-tool-btn" type="button" data-action="zoom-in">+</button>
+            <button class="button button-secondary map-tool-btn" type="button" data-action="zoom-out">−</button>
+            <button class="button button-secondary map-tool-btn" type="button" data-action="zoom-reset">100%</button>
+        </div>
+
+        <div class="map-toolbar-group">
+            <button class="button button-secondary map-tool-btn" type="button" data-action="pan-up">↑</button>
+            <button class="button button-secondary map-tool-btn" type="button" data-action="pan-left">←</button>
+            <button class="button button-secondary map-tool-btn" type="button" data-action="pan-right">→</button>
+            <button class="button button-secondary map-tool-btn" type="button" data-action="pan-down">↓</button>
+        </div>
+
+        <div class="map-toolbar-hint">
+            ЛКМ + перетаскивание — двигать карту
+        </div>
+    </div>
+
+    <div id="map-shell" class="map-scroll-shell">
+        <div id="map-surface" class="map-surface">
+            <svg id="semantic-map-svg" class="semantic-map-svg" preserveAspectRatio="xMidYMin meet"></svg>
+        </div>
+    </div>
+</section>
+
+<script>
+const nodes = {{ nodes_json|safe }};
+const edges = {{ edges_json|safe }};
+const mode = {{ map_summary.mode|tojson }};
+
+const svg = document.getElementById("semantic-map-svg");
+const mapShell = document.getElementById("map-shell");
+const mapSurface = document.getElementById("map-surface");
+const NS = "http://www.w3.org/2000/svg";
+
+let currentScale = 1;
+
+function createSvgElement(name, attrs = {}) {
+    const el = document.createElementNS(NS, name);
+    Object.entries(attrs).forEach(([key, value]) => {
+        el.setAttribute(key, String(value));
+    });
+    return el;
+}
+
+function wrapLabel(text, maxLen = 24) {
+    const words = String(text).split(/\s+/);
+    const lines = [];
+    let current = "";
+
+    for (const word of words) {
+        const candidate = current ? current + " " + word : word;
+        if (candidate.length <= maxLen) {
+            current = candidate;
+        } else {
+            if (current) {
+                lines.push(current);
+            }
+            current = word;
+        }
+    }
+
+    if (current) {
+        lines.push(current);
+    }
+
+    return lines.slice(0, 6);
+}
+
+function getNodeStyle(node) {
+    if (node.type === "document") {
+        return { width: 300, maxLen: 24, lineHeight: 20, paddingY: 24 };
+    }
+
+    if (node.type === "definition") {
+        return { width: 460, maxLen: 34, lineHeight: 18, paddingY: 26 };
+    }
+
+    if (node.type === "related_term") {
+        return { width: 300, maxLen: 24, lineHeight: 18, paddingY: 22 };
+    }
+
+    return { width: 320, maxLen: 24, lineHeight: 19, paddingY: 22 };
+}
+
+function prepareNodes(nodes) {
+    return nodes.map(node => {
+        const style = getNodeStyle(node);
+        const lines = wrapLabel(node.label, style.maxLen);
+        const height = Math.max(72, lines.length * style.lineHeight + style.paddingY);
+
+        return {
+            ...node,
+            width: style.width,
+            height,
+            lines,
+            lineHeight: style.lineHeight,
+        };
+    });
+}
+
+function getEdgeMap(edges, label) {
+    const result = new Map();
+    edges
+        .filter(edge => edge.label === label)
+        .forEach(edge => {
+            if (!result.has(edge.source)) {
+                result.set(edge.source, []);
+            }
+            result.get(edge.source).push(edge.target);
+        });
+    return result;
+}
+
+function indexNodesById(nodes) {
+    const map = new Map();
+    nodes.forEach(node => map.set(node.id, node));
+    return map;
+}
+
+function sortNodesByLabel(list) {
+    return [...list].sort((a, b) => String(a.label).localeCompare(String(b.label), "ru"));
+}
+
+function buildDocumentModeLayout(preparedNodes, edges) {
+    const documentNodes = preparedNodes.filter(node => node.type === "document");
+    const termNodes = sortNodesByLabel(preparedNodes.filter(node => node.type === "term"));
+    const definitionNodes = preparedNodes.filter(node => node.type === "definition");
+    const relatedTermNodes = sortNodesByLabel(preparedNodes.filter(node => node.type === "related_term"));
+
+    const nodeById = indexNodesById(preparedNodes);
+
+    const termToDefinition = new Map();
+    edges
+        .filter(edge => edge.label === "имеет определение")
+        .forEach(edge => {
+            termToDefinition.set(edge.source, edge.target);
+        });
+
+    const definitionToRelated = new Map();
+    edges
+        .filter(edge => edge.label === "упоминает термин")
+        .forEach(edge => {
+            if (!definitionToRelated.has(edge.source)) {
+                definitionToRelated.set(edge.source, []);
+            }
+            definitionToRelated.get(edge.source).push(edge.target);
+        });
+
+    const positions = {};
+    const laneX = {
+        document: 240,
+        term: 680,
+        definition: 1280,
+        related: 1830,
+    };
+
+    const termSpacing = 170;
+    const relatedSpacing = 110;
+    const topY = 180;
+
+    termNodes.forEach((termNode, index) => {
+        const y = topY + index * termSpacing;
+        positions[termNode.id] = {
+            x: laneX.term,
+            y,
+            width: termNode.width,
+            height: termNode.height,
+        };
+
+        const defId = termToDefinition.get(termNode.id);
+        if (defId) {
+            const defNode = nodeById.get(defId);
+            if (defNode) {
+                positions[defNode.id] = {
+                    x: laneX.definition,
+                    y,
+                    width: defNode.width,
+                    height: defNode.height,
+                };
+
+                const relatedIds = definitionToRelated.get(defId) || [];
+                relatedIds.forEach((relatedId, relIndex) => {
+                    const relatedNode = nodeById.get(relatedId);
+                    if (!relatedNode) return;
+
+                    if (!positions[relatedId]) {
+                        positions[relatedId] = {
+                            x: laneX.related,
+                            y: y + relIndex * relatedSpacing,
+                            width: relatedNode.width,
+                            height: relatedNode.height,
+                        };
+                    }
+                });
+            }
+        }
+    });
+
+    documentNodes.forEach((docNode, index) => {
+        const totalHeight = Math.max(1, termNodes.length - 1) * termSpacing;
+        const centerY = topY + totalHeight / 2;
+        positions[docNode.id] = {
+            x: laneX.document,
+            y: centerY + index * 120,
+            width: docNode.width,
+            height: docNode.height,
+        };
+    });
+
+    const laneHeaders = [
+        { x: laneX.document, y: 70, label: "Документ" },
+        { x: laneX.term, y: 70, label: "Термины" },
+        { x: laneX.definition, y: 70, label: "Определения" },
+        { x: laneX.related, y: 70, label: "Термины внутри определений" },
+    ];
+
+    return { positions, laneHeaders };
+}
+
+function buildTermModeLayout(preparedNodes, edges) {
+    const documentNodes = sortNodesByLabel(preparedNodes.filter(node => node.type === "document"));
+    const mainTermNodes = preparedNodes.filter(node => node.type === "term");
+    const definitionNodes = preparedNodes.filter(node => node.type === "definition");
+    const relatedTermNodes = sortNodesByLabel(preparedNodes.filter(node => node.type === "related_term"));
+
+    const nodeById = indexNodesById(preparedNodes);
+    const positions = {};
+
+    const laneX = {
+        document: 240,
+        term: 760,
+        definition: 1320,
+        related: 1840,
+    };
+
+    const docSpacing = 120;
+    const defSpacing = 220;
+    const relatedSpacing = 110;
+    const topY = 180;
+
+    documentNodes.forEach((docNode, index) => {
+        positions[docNode.id] = {
+            x: laneX.document,
+            y: topY + index * docSpacing,
+            width: docNode.width,
+            height: docNode.height,
+        };
+    });
+
+    const mainTermNode = mainTermNodes[0];
+    if (mainTermNode) {
+        const docHeight = documentNodes.length > 1 ? (documentNodes.length - 1) * docSpacing : 0;
+        const defHeight = definitionNodes.length > 1 ? (definitionNodes.length - 1) * defSpacing : 0;
+        const centerY = topY + Math.max(docHeight, defHeight) / 2;
+
+        positions[mainTermNode.id] = {
+            x: laneX.term,
+            y: centerY,
+            width: mainTermNode.width,
+            height: mainTermNode.height,
+        };
+    }
+
+    definitionNodes.forEach((defNode, index) => {
+        const y = topY + index * defSpacing;
+        positions[defNode.id] = {
+            x: laneX.definition,
+            y,
+            width: defNode.width,
+            height: defNode.height,
+        };
+    });
+
+    const definitionToRelated = new Map();
+    edges
+        .filter(edge => edge.label === "упоминает термин")
+        .forEach(edge => {
+            if (!definitionToRelated.has(edge.source)) {
+                definitionToRelated.set(edge.source, []);
+            }
+            definitionToRelated.get(edge.source).push(edge.target);
+        });
+
+    definitionNodes.forEach(defNode => {
+        const defPos = positions[defNode.id];
+        const relatedIds = definitionToRelated.get(defNode.id) || [];
+
+        relatedIds.forEach((relatedId, relIndex) => {
+            const relatedNode = nodeById.get(relatedId);
+            if (!relatedNode) return;
+
+            if (!positions[relatedId]) {
+                positions[relatedId] = {
+                    x: laneX.related,
+                    y: defPos.y + relIndex * relatedSpacing,
+                    width: relatedNode.width,
+                    height: relatedNode.height,
+                };
+            }
+        });
+    });
+
+    const laneHeaders = [
+        { x: laneX.document, y: 70, label: "Документы" },
+        { x: laneX.term, y: 70, label: "Выбранный термин" },
+        { x: laneX.definition, y: 70, label: "Определения" },
+        { x: laneX.related, y: 70, label: "Термины внутри определений" },
+    ];
+
+    return { positions, laneHeaders };
+}
+
+function computeCanvasSize(positions) {
+    let maxX = 0;
+    let maxY = 0;
+
+    Object.values(positions).forEach(pos => {
+        maxX = Math.max(maxX, pos.x + pos.width / 2 + 140);
+        maxY = Math.max(maxY, pos.y + pos.height / 2 + 140);
+    });
+
+    return {
+        width: Math.max(2200, maxX),
+        height: Math.max(1000, maxY),
+    };
+}
+
+function drawLaneHeaders(laneHeaders) {
+    laneHeaders.forEach(item => {
+        const text = createSvgElement("text", {
+            x: item.x,
+            y: item.y,
+            "text-anchor": "middle",
+            fill: "#475467",
+            "font-size": "18",
+            "font-weight": "700",
+        });
+        text.textContent = item.label;
+        svg.appendChild(text);
+    });
+}
+
+function getNodeCenter(pos) {
+    return {
+        x: pos.x,
+        y: pos.y,
+    };
+}
+
+function drawOrthogonalPath(sourcePos, targetPos, color, dashed = false) {
+    const source = getNodeCenter(sourcePos);
+    const target = getNodeCenter(targetPos);
+
+    const startX = source.x + sourcePos.width / 2;
+    const startY = source.y;
+    const endX = target.x - targetPos.width / 2;
+    const endY = target.y;
+
+    const midX = startX + (endX - startX) / 2;
+
+    const pathData = [
+        `M ${startX} ${startY}`,
+        `L ${midX} ${startY}`,
+        `L ${midX} ${endY}`,
+        `L ${endX} ${endY}`,
+    ].join(" ");
+
+    const path = createSvgElement("path", {
+        d: pathData,
+        fill: "none",
+        stroke: color,
+        "stroke-width": dashed ? "2.5" : "3",
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+        "marker-end": "url(#arrow)",
+    });
+
+    if (dashed) {
+        path.setAttribute("stroke-dasharray", "8 7");
+    }
+
+    svg.appendChild(path);
+}
+
+function drawDocumentToTermBus(edge, positions) {
+    const sourcePos = positions[edge.source];
+    const targetPos = positions[edge.target];
+    if (!sourcePos || !targetPos) return;
+
+    const startX = sourcePos.x + sourcePos.width / 2;
+    const startY = sourcePos.y;
+    const busX = startX + 110;
+    const endX = targetPos.x - targetPos.width / 2;
+    const endY = targetPos.y;
+
+    const pathData = [
+        `M ${startX} ${startY}`,
+        `L ${busX} ${startY}`,
+        `L ${busX} ${endY}`,
+        `L ${endX} ${endY}`,
+    ].join(" ");
+
+    const path = createSvgElement("path", {
+        d: pathData,
+        fill: "none",
+        stroke: edge.color || "#94a3b8",
+        "stroke-width": "2.6",
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+        "marker-end": "url(#arrow)",
+        opacity: "0.9",
+    });
+
+    svg.appendChild(path);
+}
+
+function drawNode(node, pos) {
+    const group = createSvgElement("g");
+
+    const rect = createSvgElement("rect", {
+        x: pos.x - pos.width / 2,
+        y: pos.y - pos.height / 2,
+        width: pos.width,
+        height: pos.height,
+        rx: 22,
+        ry: 22,
+        fill: node.color,
+        opacity: "0.96",
+        filter: "url(#shadow)",
+    });
+    group.appendChild(rect);
+
+    const startY = pos.y - ((node.lines.length - 1) * node.lineHeight) / 2;
+
+    node.lines.forEach((lineText, index) => {
+        const text = createSvgElement("text", {
+            x: pos.x,
+            y: startY + index * node.lineHeight,
+            "text-anchor": "middle",
+            "dominant-baseline": "middle",
+            fill: "#ffffff",
+            "font-size": node.type === "definition" ? "14" : "15",
+            "font-weight": "700",
+        });
+        text.textContent = lineText;
+        group.appendChild(text);
+    });
+
+    svg.appendChild(group);
+}
+
+function createDefs() {
+    const defs = createSvgElement("defs");
+
+    const marker = createSvgElement("marker", {
+        id: "arrow",
+        viewBox: "0 0 10 10",
+        refX: "8",
+        refY: "5",
+        markerWidth: "7",
+        markerHeight: "7",
+        orient: "auto-start-reverse",
+    });
+    marker.appendChild(createSvgElement("path", {
+        d: "M 0 0 L 10 5 L 0 10 z",
+        fill: "#94a3b8",
+    }));
+
+    const filter = createSvgElement("filter", {
+        id: "shadow",
+        x: "-20%",
+        y: "-20%",
+        width: "140%",
+        height: "140%",
+    });
+    filter.appendChild(createSvgElement("feDropShadow", {
+        dx: "0",
+        dy: "8",
+        stdDeviation: "8",
+        "flood-opacity": "0.12",
+    }));
+
+    defs.appendChild(marker);
+    defs.appendChild(filter);
+    svg.appendChild(defs);
+}
+
+function renderMap() {
+    svg.innerHTML = "";
+    createDefs();
+
+    const preparedNodes = prepareNodes(nodes);
+    const layout = mode === "document"
+        ? buildDocumentModeLayout(preparedNodes, edges)
+        : buildTermModeLayout(preparedNodes, edges);
+
+    const positions = layout.positions;
+    const laneHeaders = layout.laneHeaders;
+    const canvasSize = computeCanvasSize(positions);
+
+    svg.setAttribute("viewBox", `0 0 ${canvasSize.width} ${canvasSize.height}`);
+    svg.setAttribute("width", canvasSize.width);
+    svg.setAttribute("height", canvasSize.height);
+
+    drawLaneHeaders(laneHeaders);
+
+    edges.forEach(edge => {
+        const sourceNode = preparedNodes.find(node => node.id === edge.source);
+        const targetNode = preparedNodes.find(node => node.id === edge.target);
+        const sourcePos = positions[edge.source];
+        const targetPos = positions[edge.target];
+
+        if (!sourceNode || !targetNode || !sourcePos || !targetPos) return;
+
+        if (edge.label === "содержит термин" && sourceNode.type === "document") {
+            drawDocumentToTermBus(edge, positions);
+            return;
+        }
+
+        const dashed = edge.label === "упоминает термин";
+        drawOrthogonalPath(sourcePos, targetPos, edge.color || "#94a3b8", dashed);
+    });
+
+    preparedNodes.forEach(node => {
+        const pos = positions[node.id];
+        if (!pos) return;
+        drawNode(node, pos);
+    });
+}
+
+function applyScale() {
+    mapSurface.style.transform = `scale(${currentScale})`;
+}
+
+function zoomIn() {
+    currentScale = Math.min(1.8, currentScale + 0.1);
+    applyScale();
+}
+
+function zoomOut() {
+    currentScale = Math.max(0.6, currentScale - 0.1);
+    applyScale();
+}
+
+function zoomReset() {
+    currentScale = 1;
+    applyScale();
+}
+
+function panBy(dx, dy) {
+    mapShell.scrollBy({
+        left: dx,
+        top: dy,
+        behavior: "smooth",
+    });
+}
+
+document.querySelectorAll(".map-tool-btn").forEach(button => {
+    button.addEventListener("click", () => {
+        const action = button.dataset.action;
+
+        if (action === "zoom-in") zoomIn();
+        if (action === "zoom-out") zoomOut();
+        if (action === "zoom-reset") zoomReset();
+        if (action === "pan-up") panBy(0, -220);
+        if (action === "pan-down") panBy(0, 220);
+        if (action === "pan-left") panBy(-220, 0);
+        if (action === "pan-right") panBy(220, 0);
+    });
+});
+
+let isDragging = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let scrollStartLeft = 0;
+let scrollStartTop = 0;
+
+mapShell.addEventListener("mousedown", event => {
+    isDragging = true;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    scrollStartLeft = mapShell.scrollLeft;
+    scrollStartTop = mapShell.scrollTop;
+    mapShell.classList.add("dragging");
+});
+
+window.addEventListener("mouseup", () => {
+    isDragging = false;
+    mapShell.classList.remove("dragging");
+});
+
+window.addEventListener("mousemove", event => {
+    if (!isDragging) return;
+
+    const dx = event.clientX - dragStartX;
+    const dy = event.clientY - dragStartY;
+
+    mapShell.scrollLeft = scrollStartLeft - dx;
+    mapShell.scrollTop = scrollStartTop - dy;
+});
+
+if (nodes.length > 0) {
+    renderMap();
+    applyScale();
+}
+</script>
+{% else %}
+<section class="card">
+    <p class="empty-text">
+        Выберите документ или термин, чтобы построить семантическую карту.
+    </p>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}{{ document.title }}{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h1>{{ document.title }}</h1>
+            <p class="muted">
+                Файл: {{ document.original_filename }} ·
+                Формат: {{ document.file_type|upper }} ·
+                Найдено пар: {{ document.extracted_pairs_count }}
+            </p>
+        </div>
+
+        <div class="page-actions">
+            <a class="button button-secondary" href="{{ url_for('main.documents') }}">Назад к списку</a>
+            <a class="button" href="{{ url_for('main.semantic_map', document_id=document.id) }}">Семантическая карта</a>
+
+            <form
+                method="post"
+                action="{{ url_for('main.document_delete', document_id=document.id) }}"
+                onsubmit="return confirm('Удалить документ {{ document.title }}?');"
+                class="inline-form"
+            >
+                <button type="submit" class="button button-danger">Удалить документ</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="card">
+    <h2>Извлеченные термины и определения</h2>
+
+    {% if occurrences %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Термин</th>
+                        <th>Определение</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in occurrences %}
+                        <tr>
+                            <td>{{ row.term_name }}</td>
+                            <td>{{ row.definition_text }}</td>
+                            <td>
+                                <a class="link" href="{{ url_for('main.term_detail', term_id=row.term_id) }}">
+                                    Карточка термина
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-text">
+            В этом документе пары «термин — определение» автоматически не найдены.
+        </p>
+    {% endif %}
+</section>
+{% endblock %}

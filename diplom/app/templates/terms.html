@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Термины{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="section-header">
+        <h1>Термины</h1>
+    </div>
+
+    <form class="search-form" method="get">
+        <input type="text" name="q" value="{{ query }}" placeholder="Поиск по термину">
+        <button class="button" type="submit">Найти</button>
+    </form>
+
+    {% if terms %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Термин</th>
+                        <th>Документов</th>
+                        <th>Разных определений</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for term in terms %}
+                        <tr>
+                            <td>{{ term.name }}</td>
+                            <td>{{ term.documents_count }}</td>
+                            <td>{{ term.definitions_count }}</td>
+                            <td class="actions-cell">
+                                <a class="link" href="{{ url_for('main.term_detail', term_id=term.id) }}">
+                                    Открыть
+                                </a>
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for('main.term_delete', term_id=term.id) }}"
+                                    onsubmit="return confirm('Удалить термин {{ term.name }}?');"
+                                    class="inline-form"
+                                >
+                                    <button type="submit" class="button button-danger">Удалить</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-text">По вашему запросу ничего не найдено.</p>
+    {% endif %}
+</section>
+{% endblock %}

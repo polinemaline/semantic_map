@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Сравнение определений{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h1>Термины с разными определениями</h1>
+    <p class="muted">
+        На этой странице показаны термины, у которых найдено больше одного уникального определения.
+    </p>
+
+    {% if conflicts %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Термин</th>
+                        <th>Документов</th>
+                        <th>Разных определений</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for term in conflicts %}
+                        <tr>
+                            <td>{{ term.name }}</td>
+                            <td>{{ term.documents_count }}</td>
+                            <td>{{ term.unique_definitions_count }}</td>
+                            <td>
+                                <a class="link" href="{{ url_for('main.term_detail', term_id=term.id) }}">
+                                    Открыть
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-text">Пока конфликтующих определений не найдено.</p>
+    {% endif %}
+</section>
+{% endblock %}

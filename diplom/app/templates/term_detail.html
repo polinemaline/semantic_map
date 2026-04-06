@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}{{ term.name }}{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h1>{{ term.name }}</h1>
+            <p class="muted">
+                Документов: {{ term.documents_count }} ·
+                Разных определений: {{ term.definitions_count }}
+            </p>
+        </div>
+
+        <div class="page-actions">
+            <a class="button button-secondary" href="{{ url_for('main.terms') }}">Назад к терминам</a>
+            <a class="button" href="{{ url_for('main.semantic_map', term_id=term.id) }}">Семантическая карта</a>
+
+            <form
+                method="post"
+                action="{{ url_for('main.term_delete', term_id=term.id) }}"
+                onsubmit="return confirm('Удалить термин {{ term.name }}?');"
+                class="inline-form"
+            >
+                <button type="submit" class="button button-danger">Удалить термин</button>
+            </form>
+        </div>
+    </div>
+
+    {% if has_conflict %}
+        <div class="notice notice-warning">
+            У этого термина найдено несколько разных определений в разных документах.
+        </div>
+    {% else %}
+        <div class="notice notice-success">
+            Для этого термина найдено одно определение или только одно вхождение.
+        </div>
+    {% endif %}
+</section>
+
+<section class="definitions-grid">
+    {% for group in grouped_definitions %}
+        <article class="card">
+            <h2>Определение {{ loop.index }}</h2>
+            <p>{{ group.definition_text }}</p>
+
+            <h3>Документы</h3>
+            <ul class="doc-list">
+                {% for doc in group.documents %}
+                    <li>
+                        <a class="link" href="{{ url_for('main.document_detail', document_id=doc.id) }}">
+                            {{ doc.title }}
+                        </a>
+                        <span class="muted">({{ doc.filename }})</span>
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <h3>Исходные строки</h3>
+            <ul class="source-list">
+                {% for source_line in group.source_lines %}
+                    <li>{{ source_line }}</li>
+                {% endfor %}
+            </ul>
+        </article>
+    {% endfor %}
+</section>
+{% endblock %}

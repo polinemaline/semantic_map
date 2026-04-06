@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Документы{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="section-header">
+        <h1>Документы</h1>
+        <a class="button" href="{{ url_for('main.upload') }}">Добавить документ</a>
+    </div>
+
+    {% if documents %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Название</th>
+                        <th>Исходный файл</th>
+                        <th>Формат</th>
+                        <th>Найдено пар</th>
+                        <th>Уникальных терминов</th>
+                        <th>Дата</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in documents %}
+                        <tr>
+                            <td>{{ doc.id }}</td>
+                            <td>{{ doc.title }}</td>
+                            <td>{{ doc.original_filename }}</td>
+                            <td>{{ doc.file_type|upper }}</td>
+                            <td>{{ doc.extracted_pairs_count }}</td>
+                            <td>{{ doc.distinct_terms_count }}</td>
+                            <td>{{ doc.created_at }}</td>
+                            <td class="actions-cell">
+                                <a class="link" href="{{ url_for('main.document_detail', document_id=doc.id) }}">
+                                    Открыть
+                                </a>
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for('main.document_delete', document_id=doc.id) }}"
+                                    onsubmit="return confirm('Удалить документ {{ doc.title }}?');"
+                                    class="inline-form"
+                                >
+                                    <button type="submit" class="button button-danger">Удалить</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-text">Документы еще не загружались.</p>
+    {% endif %}
+</section>
+{% endblock %}

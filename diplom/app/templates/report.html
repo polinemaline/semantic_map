@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Отчет{% endblock %}
+
+{% block content %}
+<section class="stats-grid">
+    <article class="card stat-card">
+        <div class="stat-number">{{ stats.documents_count }}</div>
+        <div class="stat-label">Документов</div>
+    </article>
+    <article class="card stat-card">
+        <div class="stat-number">{{ stats.terms_count }}</div>
+        <div class="stat-label">Терминов</div>
+    </article>
+    <article class="card stat-card">
+        <div class="stat-number">{{ stats.definitions_count }}</div>
+        <div class="stat-label">Уникальных определений</div>
+    </article>
+    <article class="card stat-card">
+        <div class="stat-number">{{ stats.conflicts_count }}</div>
+        <div class="stat-label">Конфликтов</div>
+    </article>
+</section>
+
+<section class="card">
+    <div class="section-header">
+        <div>
+            <h1>Отчет по терминам и определениям</h1>
+            <p class="muted">
+                Здесь показаны группировки вида «термин → определение → документы» и
+                «документ → термин → определение».
+            </p>
+        </div>
+        <div class="page-actions">
+            <a class="button" href="{{ url_for('main.download_report') }}">Скачать CSV</a>
+            <a class="button button-secondary" href="{{ url_for('main.semantic_map') }}">Открыть карту</a>
+        </div>
+    </div>
+</section>
+
+<section class="card">
+    <h2>1. По терминам</h2>
+
+    {% if term_groups %}
+        <div class="accordion-list">
+            {% for term_group in term_groups %}
+                <details class="accordion-card">
+                    <summary class="accordion-summary">
+                        <div>
+                            <strong>{{ term_group.term_name }}</strong>
+                            <span class="muted">
+                                · документов: {{ term_group.documents_count }}
+                                · разных определений: {{ term_group.definitions_count }}
+                            </span>
+                        </div>
+
+                        <div class="summary-right">
+                            {% if term_group.has_conflict %}
+                                <span class="badge badge-danger">Конфликт определений</span>
+                            {% else %}
+                                <span class="badge badge-success">Определения согласованы</span>
+                            {% endif %}
+                        </div>
+                    </summary>
+
+                    <div class="accordion-body">
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Определение</th>
+                                        <th>Документы</th>
+                                        <th>Карта</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for def_group in term_group.definitions %}
+                                        <tr>
+                                            <td>{{ def_group.definition_text }}</td>
+                                            <td>
+                                                {% for doc in def_group.documents %}
+                                                    <div>
+                                                        <a class="link" href="{{ url_for('main.document_detail', document_id=doc.id) }}">
+                                                            {{ doc.title }}
+                                                        </a>
+                                                        <span class="muted">(ID {{ doc.id }})</span>
+                                                    </div>
+                                                {% endfor %}
+                                            </td>
+                                            <td>
+                                                <a class="link" href="{{ url_for('main.semantic_map', term_id=term_group.term_id) }}">
+                                                    Открыть
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-text">Данные для отчета пока отсутствуют.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h2>2. По документам</h2>
+
+    {% if document_groups %}
+        <div class="accordion-list">
+            {% for doc_group in document_groups %}
+                <details class="accordion-card">
+                    <summary class="accordion-summary">
+                        <div>
+                            <strong>{{ doc_group.document_title }}</strong>
+                            <span class="muted">· {{ doc_group.original_filename }}</span>
+                        </div>
+
+                        <div class="summary-right">
+                            <a class="link" href="{{ url_for('main.semantic_map', document_id=doc_group.document_id) }}">
+                                Семантическая карта
+                            </a>
+                        </div>
+                    </summary>
+
+                    <div class="accordion-body">
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Термин</th>
+                                        <th>Определение</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in doc_group.terms %}
+                                        <tr>
+                                            <td>
+                                                <a class="link" href="{{ url_for('main.term_detail', term_id=row.term_id) }}">
+                                                    {{ row.term_name }}
+                                                </a>
+                                            </td>
+                                            <td>{{ row.definition_text }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-text">Документы пока не загружались.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h2>3. Термины с разными определениями</h2>
+
+    {% if conflicts %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Термин</th>
+                        <th>Документов</th>
+                        <th>Разных определений</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for term in conflicts %}
+                        <tr>
+                            <td>{{ term.name }}</td>
+                            <td>{{ term.documents_count }}</td>
+                            <td>{{ term.unique_definitions_count }}</td>
+                            <td>
+                                <a class="link" href="{{ url_for('main.term_detail', term_id=term.id) }}">
+                                    Карточка термина
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-text">Конфликтующих определений пока не найдено.</p>
+    {% endif %}
+</section>
+{% endblock %}
