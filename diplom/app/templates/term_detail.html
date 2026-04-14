@@ -3,149 +3,205 @@
 {% block title %}{{ term.name }} — Semantic Map{% endblock %}
 
 {% block content %}
-<section class="page-intro glass-panel">
-    <div>
-        <span class="eyebrow">Term overview</span>
-        <h1>{{ term.name }}</h1>
-        <p>
-            Здесь собраны все найденные варианты определения выбранного термина,
-            документы, в которых он встречается, и исходные строки для анализа.
-        </p>
+<style>
+.term-detail-page-stack {
+    display: grid;
+    gap: 22px;
+}
 
-        <div class="meta-row">
-            <span class="info-pill">Документов: {{ term.documents_count }}</span>
-            <span class="info-pill">Разных определений: {{ term.definitions_count }}</span>
-            {% if has_conflict %}
-                <span class="info-pill" style="background: rgba(251, 113, 133, 0.14); color: #ffd0d8;">Есть расхождения</span>
-            {% else %}
-                <span class="info-pill">Определения согласованы</span>
-            {% endif %}
-        </div>
-    </div>
-</section>
+.term-detail-page-stack > .page-intro,
+.term-detail-page-stack > .section-card {
+    margin-bottom: 0;
+}
 
-<section class="section-card glass-panel">
-    <div class="section-head">
+.term-definition-stack {
+    display: grid;
+    gap: 22px;
+}
+
+.term-inner-card {
+    padding: 22px;
+    border-radius: 22px;
+}
+
+.term-inner-card-head {
+    margin-bottom: 14px;
+}
+
+.term-inner-card-head h2 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.term-definition-text {
+    margin-bottom: 10px;
+}
+
+.term-definition-text-body {
+    font-size: 15px;
+    color: rgba(235, 242, 255, 0.82);
+    line-height: 1.75;
+}
+
+.term-list-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.term-list-card {
+    padding: 16px;
+}
+
+.term-list-title {
+    font-size: 16px;
+    margin-bottom: 6px;
+}
+
+.term-list-line {
+    margin: 0;
+}
+</style>
+
+<div class="term-detail-page-stack">
+    <section class="page-intro glass-panel">
         <div>
-            <span class="eyebrow">Term actions</span>
-            <h2>Действия</h2>
-        </div>
+            <h1>{{ term.name }}</h1>
 
-        <div class="page-actions">
-            <a class="button button-secondary" href="{{ url_for('main.terms') }}">Назад к терминам</a>
-            <a class="button" href="{{ url_for('main.semantic_map', term_id=term.id) }}">Семантическая карта</a>
-
-            <form
-                method="post"
-                action="{{ url_for('main.term_delete', term_id=term.id) }}"
-                onsubmit="return confirm('Удалить термин {{ term.name }}?');"
-                class="inline-form"
-            >
-                <button type="submit" class="button button-danger">Удалить термин</button>
-            </form>
-        </div>
-    </div>
-</section>
-
-<section class="section-card glass-panel">
-    {% if has_conflict %}
-        <div class="flash flash-warning">
-            Для этого термина найдено несколько разных определений в разных документах.
-        </div>
-    {% else %}
-        <div class="flash flash-success">
-            Для этого термина найдено одно определение или только одно вхождение.
-        </div>
-    {% endif %}
-</section>
-
-{% if grouped_definitions %}
-    {% for group in grouped_definitions %}
-        <section class="section-card glass-panel" style="margin-bottom: 22px;">
-            <div class="section-head">
-                <div>
-                    <span class="eyebrow">Definition {{ loop.index }}</span>
-                    <h2>Определение {{ loop.index }}</h2>
-                </div>
-
-                <div class="page-actions">
-                    <span class="info-pill">Документов: {{ group.documents|length }}</span>
-                </div>
+            <div class="meta-row">
+                <span class="info-pill">Документов: {{ term.documents_count }}</span>
+                <span class="info-pill">Разных определений: {{ term.definitions_count }}</span>
+                {% if has_conflict %}
+                    <span class="info-pill" style="background: rgba(251, 113, 133, 0.14); color: #ffd0d8;">
+                        Есть расхождения
+                    </span>
+                {% else %}
+                    <span class="info-pill">Определения согласованы</span>
+                {% endif %}
             </div>
-
-            <section class="glass-panel" style="padding: 22px; margin-bottom: 18px; border-radius: 22px;">
-                <div class="table-title" style="margin-bottom: 10px;">Текст определения</div>
-                <div class="table-subtitle" style="font-size: 15px; color: rgba(235,242,255,0.82); line-height: 1.75;">
-                    {{ group.definition_text }}
-                </div>
-            </section>
-
-            <div class="action-grid">
-                <div class="glass-panel" style="padding: 22px; border-radius: 22px;">
-                    <div class="section-head" style="margin-bottom: 14px;">
-                        <div>
-                            <span class="eyebrow">Sources</span>
-                            <h2 style="font-size: 22px;">Документы</h2>
-                        </div>
-                    </div>
-
-                    {% if group.documents %}
-                        <div style="display: grid; gap: 12px;">
-                            {% for doc in group.documents %}
-                                <div class="action-card" style="padding: 16px;">
-                                    <span class="action-card-icon action-icon-blue">≣</span>
-                                    <div class="action-card-body">
-                                        <h3 style="font-size: 16px; margin-bottom: 6px;">
-                                            <a class="text-link" href="{{ url_for('main.document_detail', document_id=doc.id) }}">
-                                                {{ doc.title }}
-                                            </a>
-                                        </h3>
-                                        <p>{{ doc.filename }}</p>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="empty-state">
-                            <p>Документы для этого определения не найдены.</p>
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="glass-panel" style="padding: 22px; border-radius: 22px;">
-                    <div class="section-head" style="margin-bottom: 14px;">
-                        <div>
-                            <span class="eyebrow">Lines</span>
-                            <h2 style="font-size: 22px;">Исходные строки</h2>
-                        </div>
-                    </div>
-
-                    {% if group.source_lines %}
-                        <div style="display: grid; gap: 12px;">
-                            {% for source_line in group.source_lines %}
-                                <div class="action-card" style="padding: 16px;">
-                                    <span class="action-card-icon action-icon-indigo">“</span>
-                                    <div class="action-card-body">
-                                        <p style="margin: 0;">{{ source_line }}</p>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="empty-state">
-                            <p>Исходные строки для этого определения отсутствуют.</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </section>
-    {% endfor %}
-{% else %}
-    <section class="section-card glass-panel">
-        <div class="empty-state">
-            <h3>Определения не найдены</h3>
-            <p>Для этого термина сейчас нет сохранённых вхождений в базе.</p>
         </div>
     </section>
-{% endif %}
+
+    <section class="section-card glass-panel">
+        <div class="section-head">
+            <div>
+                <h2>Действия</h2>
+            </div>
+
+            <div class="page-actions">
+                <a class="button button-secondary" href="{{ url_for('main.terms') }}">Назад к терминам</a>
+                <a class="button" href="{{ url_for('main.semantic_map', term_id=term.id) }}">Семантическая карта</a>
+
+                <form
+                    method="post"
+                    action="{{ url_for('main.term_delete', term_id=term.id) }}"
+                    onsubmit="return confirm('Удалить термин {{ term.name }}?');"
+                    class="inline-form"
+                >
+                    <button type="submit" class="button button-danger">Удалить термин</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-card glass-panel">
+        {% if has_conflict %}
+            <div class="flash flash-warning">
+                Для этого термина найдено несколько разных определений в разных документах.
+            </div>
+        {% else %}
+            <div class="flash flash-success">
+                Для этого термина найдено одно определение или только одно вхождение.
+            </div>
+        {% endif %}
+    </section>
+
+    {% if grouped_definitions %}
+        <div class="term-definition-stack">
+            {% for group in grouped_definitions %}
+                <section class="section-card glass-panel">
+                    <div class="section-head">
+                        <div>
+                            <h2>Определение {{ loop.index }}</h2>
+                        </div>
+
+                        <div class="page-actions">
+                            <span class="info-pill">Документов: {{ group.documents|length }}</span>
+                        </div>
+                    </div>
+
+                    <section class="glass-panel term-inner-card">
+                        <div class="table-title term-definition-text">Текст определения</div>
+                        <div class="table-subtitle term-definition-text-body">
+                            {{ group.definition_text }}
+                        </div>
+                    </section>
+
+                    <div class="action-grid" style="margin-top: 18px;">
+                        <div class="glass-panel term-inner-card">
+                            <div class="section-head term-inner-card-head">
+                                <div>
+                                    <h2>Документы</h2>
+                                </div>
+                            </div>
+
+                            {% if group.documents %}
+                                <div class="term-list-grid">
+                                    {% for doc in group.documents %}
+                                        <div class="action-card term-list-card">
+                                            <span class="action-card-icon action-icon-blue">≣</span>
+                                            <div class="action-card-body">
+                                                <h3 class="term-list-title">
+                                                    <a class="text-link" href="{{ url_for('main.document_detail', document_id=doc.id) }}">
+                                                        {{ doc.title }}
+                                                    </a>
+                                                </h3>
+                                                <p>{{ doc.filename }}</p>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="empty-state">
+                                    <p>Документы для этого определения не найдены.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="glass-panel term-inner-card">
+                            <div class="section-head term-inner-card-head">
+                                <div>
+                                    <h2>Исходные строки</h2>
+                                </div>
+                            </div>
+
+                            {% if group.source_lines %}
+                                <div class="term-list-grid">
+                                    {% for source_line in group.source_lines %}
+                                        <div class="action-card term-list-card">
+                                            <span class="action-card-icon action-icon-indigo">“</span>
+                                            <div class="action-card-body">
+                                                <p class="term-list-line">{{ source_line }}</p>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="empty-state">
+                                    <p>Исходные строки для этого определения отсутствуют.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </section>
+            {% endfor %}
+        </div>
+    {% else %}
+        <section class="section-card glass-panel">
+            <div class="empty-state">
+                <h3>Определения не найдены</h3>
+                <p>Для этого термина сейчас нет сохранённых вхождений в базе.</p>
+            </div>
+        </section>
+    {% endif %}
+</div>
 {% endblock %}

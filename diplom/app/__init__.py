@@ -13,6 +13,7 @@ def create_app() -> Flask:
 
     Path(app.config["INSTANCE_DIR"]).mkdir(parents=True, exist_ok=True)
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
+    Path(app.config["AVATAR_FOLDER"]).mkdir(parents=True, exist_ok=True)
 
     app.teardown_appcontext(close_db)
 

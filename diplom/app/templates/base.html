@@ -16,6 +16,7 @@
         ('main.report', 'Отчет'),
         ('main.semantic_map', 'Семантическая карта')
     ] %}
+    {% set auth_page = request.endpoint in ['main.login', 'main.register'] %}
 
     <div class="app-bg">
         <div class="app-bg-orb app-bg-orb-1"></div>
@@ -25,16 +26,19 @@
         <div class="app-bg-noise"></div>
     </div>
 
+    {% if not auth_page %}
     <header class="site-header">
         <div class="container">
-            <div class="site-header-shell">
-                <a class="brand" href="{{ url_for('main.index') }}">
-                    <span class="brand-mark">Σ</span>
-                    <span class="brand-copy">
-                        <span class="brand-title">Semantic Map</span>
-                        <span class="brand-subtitle">Терминологический анализ документов</span>
-                    </span>
-                </a>
+            <div class="site-header-shell site-header-main">
+                <div class="user-badge">
+                    <div class="user-avatar">
+                        <span>{{ g.current_user["email"][0]|upper }}</span>
+                    </div>
+
+                    <div class="user-badge-copy">
+                        <div class="user-badge-name">{{ g.current_user["email"] }}</div>
+                    </div>
+                </div>
 
                 <nav class="nav" aria-label="Основная навигация">
                     {% for endpoint, label in navigation %}
@@ -46,12 +50,19 @@
                         </a>
                     {% endfor %}
                 </nav>
+
+                <div class="header-actions">
+                    <form method="post" action="{{ url_for('main.logout') }}">
+                        <button type="submit" class="button button-secondary">Выйти</button>
+                    </form>
+                </div>
             </div>
         </div>
     </header>
+    {% endif %}
 
-    <main class="app-main">
-        <div class="container">
+    <main class="app-main {% if auth_page %}app-main-auth{% endif %}">
+        <div class="container {% if auth_page %}auth-container{% endif %}">
             {% with messages = get_flashed_messages(with_categories=True) %}
                 {% if messages %}
                     <div class="flash-stack">
