@@ -76,7 +76,9 @@
                                 <td>
                                     <div class="table-title">{{ term.name }}</div>
                                 </td>
-                                <td>{{ term.documents_count }}</td>
+                                <td>
+                                    <span class="status-pill">{{ term.documents_count }}</span>
+                                </td>
                                 <td>
                                     {% if term.definitions_count > 1 %}
                                         <span class="status-pill" style="background: rgba(251, 113, 133, 0.14); color: #ffd0d8;">
@@ -98,7 +100,9 @@
                                             onsubmit="return confirm('Удалить термин {{ term.name }}?');"
                                             class="inline-form"
                                         >
-                                            <button type="submit" class="button button-danger">Удалить</button>
+                                            <button type="submit" class="text-link text-link-danger text-link-button">
+                                                Удалить
+                                            </button>
                                         </form>
                                     </div>
                                 </td>

@@ -68,7 +68,6 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Документ</th>
                             <th>Формат</th>
                             <th>Пары</th>
@@ -80,7 +79,6 @@
                     <tbody>
                         {% for doc in documents %}
                             <tr>
-                                <td>{{ doc.id }}</td>
                                 <td>
                                     <div class="table-title">{{ doc.title }}</div>
                                     <div class="table-subtitle">{{ doc.original_filename }}</div>
@@ -88,8 +86,12 @@
                                 <td>
                                     <span class="status-pill">{{ doc.file_type|upper }}</span>
                                 </td>
-                                <td>{{ doc.extracted_pairs_count }}</td>
-                                <td>{{ doc.distinct_terms_count }}</td>
+                                <td>
+                                    <span class="status-pill">{{ doc.extracted_pairs_count }}</span>
+                                </td>
+                                <td>
+                                    <span class="status-pill">{{ doc.distinct_terms_count }}</span>
+                                </td>
                                 <td>{{ doc.created_at }}</td>
                                 <td>
                                     <div class="page-actions">
@@ -103,7 +105,9 @@
                                             onsubmit="return confirm('Удалить документ {{ doc.title }}?');"
                                             class="inline-form"
                                         >
-                                            <button type="submit" class="button button-danger">Удалить</button>
+                                            <button type="submit" class="text-link text-link-danger text-link-button">
+                                                Удалить
+                                            </button>
                                         </form>
                                     </div>
                                 </td>

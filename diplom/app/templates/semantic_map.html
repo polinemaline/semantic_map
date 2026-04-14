@@ -123,17 +123,40 @@
     top: 18px;
     left: 18px;
     width: 330px;
-    padding: 16px;
     border-radius: 22px;
+    overflow: hidden;
 }
 
-.map-legend-title {
-    margin-bottom: 12px;
-    color: rgba(223, 232, 255, 0.70);
+.map-legend-summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    color: rgba(223, 232, 255, 0.78);
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+    user-select: none;
+}
+
+.map-legend-summary::-webkit-details-marker {
+    display: none;
+}
+
+.map-legend-summary::marker {
+    display: none;
+}
+
+.map-legend-summary:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.map-legend-panel {
+    padding: 0 16px 16px;
+}
+
+.map-legend:not([open]) .map-legend-panel {
+    display: none;
 }
 
 .map-legend-grid {
@@ -278,9 +301,7 @@
 
 <section class="page-intro glass-panel">
     <div>
-        
         <h1>Семантическая карта</h1>
-       
     </div>
 </section>
 
@@ -289,7 +310,6 @@
         <section class="glass-panel map-panel">
             <div class="section-head">
                 <div>
-                    
                     <h2>Фильтры построения</h2>
                 </div>
             </div>
@@ -375,23 +395,24 @@
         <section class="section-card glass-panel">
             <div class="section-head">
                 <div>
-                    <span class="eyebrow">Canvas</span>
                     <h2>{{ map_summary.title }}</h2>
                 </div>
             </div>
 
             <div class="map-shell-wrap">
-                <div class="map-floating map-legend">
-                    <div class="map-legend-title">Легенда</div>
-                    <div class="map-legend-grid">
-                        <span class="map-chip map-chip-doc">Документ</span>
-                        <span class="map-chip map-chip-term">Термин</span>
-                        <span class="map-chip map-chip-def">Определение</span>
-                        <span class="map-chip map-chip-related">Термин внутри определения</span>
-                        <span class="map-chip map-chip-conflict">Конфликт</span>
-                        <span class="map-chip map-chip-shared">В нескольких документах</span>
+                <details class="map-floating map-legend">
+                    <summary class="map-legend-summary">Легенда</summary>
+                    <div class="map-legend-panel">
+                        <div class="map-legend-grid">
+                            <span class="map-chip map-chip-doc">Документ</span>
+                            <span class="map-chip map-chip-term">Термин</span>
+                            <span class="map-chip map-chip-def">Определение</span>
+                            <span class="map-chip map-chip-related">Термин внутри определения</span>
+                            <span class="map-chip map-chip-conflict">Конфликт</span>
+                            <span class="map-chip map-chip-shared">В нескольких документах</span>
+                        </div>
                     </div>
-                </div>
+                </details>
 
                 <div class="map-floating map-zoom">
                     <button class="map-zoom-btn" type="button" data-action="zoom-out">−</button>

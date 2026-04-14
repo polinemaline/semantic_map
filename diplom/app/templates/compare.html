@@ -42,7 +42,9 @@
                             <td>
                                 <div class="table-title">{{ term.name }}</div>
                             </td>
-                            <td>{{ term.documents_count }}</td>
+                            <td>
+                                <span class="status-pill">{{ term.documents_count }}</span>
+                            </td>
                             <td>
                                 <span class="status-pill" style="background: rgba(251, 113, 133, 0.14); color: #ffd0d8;">
                                     {{ term.unique_definitions_count }}
