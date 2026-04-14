@@ -1,76 +1,257 @@
 {% extends "base.html" %}
 
-{% block title %}Отчет{% endblock %}
+{% block title %}Отчет — Semantic Map{% endblock %}
 
 {% block content %}
+<style>
+.report-stack {
+    display: grid;
+    gap: 22px;
+}
+
+.report-accordion {
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.report-accordion + .report-accordion {
+    margin-top: 14px;
+}
+
+.report-accordion summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 20px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.report-accordion summary::-webkit-details-marker {
+    display: none;
+}
+
+.report-accordion summary:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.report-accordion-body {
+    padding: 0 22px 22px;
+}
+
+.report-summary-left strong {
+    display: block;
+    font-size: 17px;
+    color: #ffffff;
+    margin-bottom: 6px;
+}
+
+.report-summary-left span {
+    color: rgba(232, 240, 255, 0.72);
+    font-size: 14px;
+}
+
+.report-summary-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.report-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.report-badge-ok {
+    background: rgba(53, 212, 154, 0.12);
+    color: #d7ffec;
+}
+
+.report-badge-danger {
+    background: rgba(251, 113, 133, 0.14);
+    color: #ffd0d8;
+}
+
+.report-badge-soft {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(239, 244, 255, 0.88);
+}
+
+.report-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.report-inner-card {
+    padding: 18px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.report-inner-card h3 {
+    margin: 0 0 12px;
+    color: #ffffff;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+}
+
+.report-inner-card p,
+.report-inner-card li {
+    color: rgba(232, 240, 255, 0.78);
+    line-height: 1.65;
+}
+
+.report-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 980px) {
+    .report-accordion summary {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .report-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<section class="page-intro glass-panel">
+    <div>
+        <span class="eyebrow">Analytics workspace</span>
+        <h1>Отчет по терминам и определениям</h1>
+        <p>
+            Здесь собрана сводная аналитика по всей базе: общий обзор, группировка по терминам,
+            анализ по документам и список конфликтующих определений.
+        </p>
+    </div>
+</section>
+
 <section class="stats-grid">
-    <article class="card stat-card">
-        <div class="stat-number">{{ stats.documents_count }}</div>
+    <article class="stat-card glass-panel">
+        <div class="stat-value">{{ stats.documents_count }}</div>
         <div class="stat-label">Документов</div>
     </article>
-    <article class="card stat-card">
-        <div class="stat-number">{{ stats.terms_count }}</div>
+
+    <article class="stat-card glass-panel">
+        <div class="stat-value">{{ stats.terms_count }}</div>
         <div class="stat-label">Терминов</div>
     </article>
-    <article class="card stat-card">
-        <div class="stat-number">{{ stats.definitions_count }}</div>
+
+    <article class="stat-card glass-panel">
+        <div class="stat-value">{{ stats.definitions_count }}</div>
         <div class="stat-label">Уникальных определений</div>
     </article>
-    <article class="card stat-card">
-        <div class="stat-number">{{ stats.conflicts_count }}</div>
+
+    <article class="stat-card glass-panel">
+        <div class="stat-value">{{ stats.conflicts_count }}</div>
         <div class="stat-label">Конфликтов</div>
     </article>
 </section>
 
-<section class="card">
-    <div class="section-header">
-        <div>
-            <h1>Отчет по терминам и определениям</h1>
-            <p class="muted">
-                Здесь показаны группировки вида «термин → определение → документы» и
-                «документ → термин → определение».
-            </p>
-        </div>
-        <div class="page-actions">
-            <a class="button" href="{{ url_for('main.download_report') }}">Скачать CSV</a>
-            <a class="button button-secondary" href="{{ url_for('main.semantic_map') }}">Открыть карту</a>
-        </div>
-    </div>
-</section>
+<div class="report-stack">
+    <section class="section-card glass-panel">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">Export</span>
+                <h2>Работа с отчетом</h2>
+            </div>
 
-<section class="card">
-    <h2>1. По терминам</h2>
+            <div class="page-actions">
+                <a class="button" href="{{ url_for('main.download_report') }}">Скачать CSV</a>
+                <a class="button button-secondary" href="{{ url_for('main.semantic_map') }}">Открыть карту</a>
+            </div>
+        </div>
 
-    {% if term_groups %}
-        <div class="accordion-list">
+        <div class="action-grid">
+            <a class="action-card" href="{{ url_for('main.compare') }}">
+                <span class="action-card-icon action-icon-rose">!</span>
+                <div class="action-card-body">
+                    <h3>Конфликтующие термины</h3>
+                    <p>Перейти в раздел сравнения и посмотреть термины с разными определениями.</p>
+                </div>
+            </a>
+
+            <a class="action-card" href="{{ url_for('main.documents') }}">
+                <span class="action-card-icon action-icon-blue">≣</span>
+                <div class="action-card-body">
+                    <h3>Документы</h3>
+                    <p>Открыть список всех источников, участвующих в аналитике.</p>
+                </div>
+            </a>
+        </div>
+    </section>
+
+    <section class="section-card glass-panel">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">By terms</span>
+                <h2>Анализ по терминам</h2>
+            </div>
+        </div>
+
+        {% if term_groups %}
             {% for term_group in term_groups %}
-                <details class="accordion-card">
-                    <summary class="accordion-summary">
-                        <div>
+                <details class="report-accordion">
+                    <summary>
+                        <div class="report-summary-left">
                             <strong>{{ term_group.term_name }}</strong>
-                            <span class="muted">
-                                · документов: {{ term_group.documents_count }}
+                            <span>
+                                документов: {{ term_group.documents_count }}
                                 · разных определений: {{ term_group.definitions_count }}
                             </span>
                         </div>
 
-                        <div class="summary-right">
+                        <div class="report-summary-right">
                             {% if term_group.has_conflict %}
-                                <span class="badge badge-danger">Конфликт определений</span>
+                                <span class="report-badge report-badge-danger">Конфликт</span>
                             {% else %}
-                                <span class="badge badge-success">Определения согласованы</span>
+                                <span class="report-badge report-badge-ok">Согласовано</span>
                             {% endif %}
+                            <span class="report-badge report-badge-soft">TERM</span>
                         </div>
                     </summary>
 
-                    <div class="accordion-body">
+                    <div class="report-accordion-body">
+                        <div class="report-actions">
+                            <a class="button button-secondary" href="{{ url_for('main.term_detail', term_id=term_group.term_id) }}">
+                                Карточка термина
+                            </a>
+                            <a class="button" href="{{ url_for('main.semantic_map', term_id=term_group.term_id) }}">
+                                Открыть карту
+                            </a>
+                        </div>
+
                         <div class="table-wrap">
                             <table>
                                 <thead>
                                     <tr>
                                         <th>Определение</th>
                                         <th>Документы</th>
-                                        <th>Карта</th>
+                                        <th>Количество</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -79,18 +260,16 @@
                                             <td>{{ def_group.definition_text }}</td>
                                             <td>
                                                 {% for doc in def_group.documents %}
-                                                    <div>
-                                                        <a class="link" href="{{ url_for('main.document_detail', document_id=doc.id) }}">
+                                                    <div style="margin-bottom: 8px;">
+                                                        <a class="text-link" href="{{ url_for('main.document_detail', document_id=doc.id) }}">
                                                             {{ doc.title }}
                                                         </a>
-                                                        <span class="muted">(ID {{ doc.id }})</span>
+                                                        <span class="table-subtitle">(ID {{ doc.id }})</span>
                                                     </div>
                                                 {% endfor %}
                                             </td>
                                             <td>
-                                                <a class="link" href="{{ url_for('main.semantic_map', term_id=term_group.term_id) }}">
-                                                    Открыть
-                                                </a>
+                                                <span class="status-pill">{{ def_group.documents|length }}</span>
                                             </td>
                                         </tr>
                                     {% endfor %}
@@ -100,33 +279,47 @@
                     </div>
                 </details>
             {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <h3>Данных по терминам пока нет</h3>
+                <p>Сначала загрузи документы, чтобы система собрала аналитическую базу.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="section-card glass-panel">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">By documents</span>
+                <h2>Анализ по документам</h2>
+            </div>
         </div>
-    {% else %}
-        <p class="empty-text">Данные для отчета пока отсутствуют.</p>
-    {% endif %}
-</section>
 
-<section class="card">
-    <h2>2. По документам</h2>
-
-    {% if document_groups %}
-        <div class="accordion-list">
+        {% if document_groups %}
             {% for doc_group in document_groups %}
-                <details class="accordion-card">
-                    <summary class="accordion-summary">
-                        <div>
+                <details class="report-accordion">
+                    <summary>
+                        <div class="report-summary-left">
                             <strong>{{ doc_group.document_title }}</strong>
-                            <span class="muted">· {{ doc_group.original_filename }}</span>
+                            <span>{{ doc_group.original_filename }}</span>
                         </div>
 
-                        <div class="summary-right">
-                            <a class="link" href="{{ url_for('main.semantic_map', document_id=doc_group.document_id) }}">
-                                Семантическая карта
-                            </a>
+                        <div class="report-summary-right">
+                            <span class="report-badge report-badge-soft">{{ doc_group.terms|length }} терминов</span>
+                            <span class="report-badge report-badge-soft">DOC</span>
                         </div>
                     </summary>
 
-                    <div class="accordion-body">
+                    <div class="report-accordion-body">
+                        <div class="report-actions">
+                            <a class="button button-secondary" href="{{ url_for('main.document_detail', document_id=doc_group.document_id) }}">
+                                Карточка документа
+                            </a>
+                            <a class="button" href="{{ url_for('main.semantic_map', document_id=doc_group.document_id) }}">
+                                Семантическая карта
+                            </a>
+                        </div>
+
                         <div class="table-wrap">
                             <table>
                                 <thead>
@@ -139,7 +332,7 @@
                                     {% for row in doc_group.terms %}
                                         <tr>
                                             <td>
-                                                <a class="link" href="{{ url_for('main.term_detail', term_id=row.term_id) }}">
+                                                <a class="text-link" href="{{ url_for('main.term_detail', term_id=row.term_id) }}">
                                                     {{ row.term_name }}
                                                 </a>
                                             </td>
@@ -152,44 +345,64 @@
                     </div>
                 </details>
             {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <h3>Документы пока не проанализированы</h3>
+                <p>После загрузки файлов здесь появится структурированный обзор по каждому источнику.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="section-card glass-panel">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">Conflicts</span>
+                <h2>Термины с разными определениями</h2>
+            </div>
         </div>
-    {% else %}
-        <p class="empty-text">Документы пока не загружались.</p>
-    {% endif %}
-</section>
 
-<section class="card">
-    <h2>3. Термины с разными определениями</h2>
-
-    {% if conflicts %}
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Термин</th>
-                        <th>Документов</th>
-                        <th>Разных определений</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for term in conflicts %}
+        {% if conflicts %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
                         <tr>
-                            <td>{{ term.name }}</td>
-                            <td>{{ term.documents_count }}</td>
-                            <td>{{ term.unique_definitions_count }}</td>
-                            <td>
-                                <a class="link" href="{{ url_for('main.term_detail', term_id=term.id) }}">
-                                    Карточка термина
-                                </a>
-                            </td>
+                            <th>Термин</th>
+                            <th>Документов</th>
+                            <th>Разных определений</th>
+                            <th>Переход</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p class="empty-text">Конфликтующих определений пока не найдено.</p>
-    {% endif %}
-</section>
+                    </thead>
+                    <tbody>
+                        {% for term in conflicts %}
+                            <tr>
+                                <td>{{ term.name }}</td>
+                                <td>{{ term.documents_count }}</td>
+                                <td>
+                                    <span class="status-pill" style="background: rgba(251, 113, 133, 0.14); color: #ffd0d8;">
+                                        {{ term.unique_definitions_count }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="page-actions">
+                                        <a class="text-link" href="{{ url_for('main.term_detail', term_id=term.id) }}">
+                                            Карточка
+                                        </a>
+                                        <a class="text-link" href="{{ url_for('main.semantic_map', term_id=term.id) }}">
+                                            Карта
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>Конфликтов пока нет</h3>
+                <p>Сейчас система не обнаружила терминов с несколькими различными определениями.</p>
+            </div>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}

@@ -1,17 +1,57 @@
 {% extends "base.html" %}
 
-{% block title %}Термины{% endblock %}
+{% block title %}Термины — Semantic Map{% endblock %}
 
 {% block content %}
-<section class="card">
-    <div class="section-header">
+<section class="page-intro glass-panel">
+    <div>
+        <span class="eyebrow">Terms workspace</span>
         <h1>Термины</h1>
+        <p>
+            Здесь можно искать термины по базе, смотреть количество документов,
+            число разных определений и переходить в подробную карточку каждого термина.
+        </p>
+    </div>
+</section>
+
+<section class="section-card glass-panel">
+    <div class="section-head">
+        <div>
+            <span class="eyebrow">Search</span>
+            <h2>Поиск по терминам</h2>
+        </div>
     </div>
 
-    <form class="search-form" method="get">
-        <input type="text" name="q" value="{{ query }}" placeholder="Поиск по термину">
-        <button class="button" type="submit">Найти</button>
+    <form method="get" class="form" style="max-width: 720px;">
+        <div class="form-group">
+            <label for="q">Название термина</label>
+            <input
+                id="q"
+                type="text"
+                name="q"
+                value="{{ query }}"
+                placeholder="Например: данные"
+            >
+        </div>
+
+        <div class="page-actions">
+            <button class="button" type="submit">Найти</button>
+            <a class="button button-secondary" href="{{ url_for('main.terms') }}">Сбросить</a>
+        </div>
     </form>
+</section>
+
+<section class="section-card glass-panel">
+    <div class="section-head">
+        <div>
+            <span class="eyebrow">Terms list</span>
+            <h2>Список терминов</h2>
+        </div>
+
+        <div class="page-actions">
+            <span class="info-pill">Найдено: {{ terms|length }}</span>
+        </div>
+    </div>
 
     {% if terms %}
         <div class="table-wrap">
@@ -27,22 +67,34 @@
                 <tbody>
                     {% for term in terms %}
                         <tr>
-                            <td>{{ term.name }}</td>
+                            <td>
+                                <div class="table-title">{{ term.name }}</div>
+                            </td>
                             <td>{{ term.documents_count }}</td>
-                            <td>{{ term.definitions_count }}</td>
-                            <td class="actions-cell">
-                                <a class="link" href="{{ url_for('main.term_detail', term_id=term.id) }}">
-                                    Открыть
-                                </a>
+                            <td>
+                                {% if term.definitions_count > 1 %}
+                                    <span class="status-pill" style="background: rgba(251, 113, 133, 0.14); color: #ffd0d8;">
+                                        {{ term.definitions_count }}
+                                    </span>
+                                {% else %}
+                                    <span class="status-pill">{{ term.definitions_count }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="page-actions">
+                                    <a class="text-link" href="{{ url_for('main.term_detail', term_id=term.id) }}">
+                                        Открыть
+                                    </a>
 
-                                <form
-                                    method="post"
-                                    action="{{ url_for('main.term_delete', term_id=term.id) }}"
-                                    onsubmit="return confirm('Удалить термин {{ term.name }}?');"
-                                    class="inline-form"
-                                >
-                                    <button type="submit" class="button button-danger">Удалить</button>
-                                </form>
+                                    <form
+                                        method="post"
+                                        action="{{ url_for('main.term_delete', term_id=term.id) }}"
+                                        onsubmit="return confirm('Удалить термин {{ term.name }}?');"
+                                        class="inline-form"
+                                    >
+                                        <button type="submit" class="button button-danger">Удалить</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
@@ -50,7 +102,13 @@
             </table>
         </div>
     {% else %}
-        <p class="empty-text">По вашему запросу ничего не найдено.</p>
+        <div class="empty-state">
+            <h3>Ничего не найдено</h3>
+            <p>
+                Попробуй изменить поисковый запрос или сначала добавь новые документы,
+                чтобы пополнить базу терминов.
+            </p>
+        </div>
     {% endif %}
 </section>
 {% endblock %}

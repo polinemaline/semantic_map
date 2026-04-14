@@ -3,38 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ИС терминологического анализа{% endblock %}</title>
+    <title>{% block title %}Semantic Map{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <header class="topbar">
-        <div class="container topbar-inner">
-            <a class="brand" href="{{ url_for('main.index') }}">Термин-Анализ MVP</a>
+    {% set navigation = [
+        ('main.index', 'Главная'),
+        ('main.upload', 'Загрузка'),
+        ('main.documents', 'Документы'),
+        ('main.terms', 'Термины'),
+        ('main.compare', 'Сравнение'),
+        ('main.report', 'Отчет'),
+        ('main.semantic_map', 'Семантическая карта')
+    ] %}
 
-            <nav class="nav">
-                <a href="{{ url_for('main.index') }}">Главная</a>
-                <a href="{{ url_for('main.upload') }}">Загрузка</a>
-                <a href="{{ url_for('main.documents') }}">Документы</a>
-                <a href="{{ url_for('main.terms') }}">Термины</a>
-                <a href="{{ url_for('main.compare') }}">Сравнение</a>
-                <a href="{{ url_for('main.report') }}">Отчет</a>
-                <a href="{{ url_for('main.semantic_map') }}">Семантическая карта</a>
-            </nav>
+    <div class="app-bg">
+        <div class="app-bg-orb app-bg-orb-1"></div>
+        <div class="app-bg-orb app-bg-orb-2"></div>
+        <div class="app-bg-orb app-bg-orb-3"></div>
+        <div class="app-bg-grid"></div>
+        <div class="app-bg-noise"></div>
+    </div>
+
+    <header class="site-header">
+        <div class="container">
+            <div class="site-header-shell">
+                <a class="brand" href="{{ url_for('main.index') }}">
+                    <span class="brand-mark">Σ</span>
+                    <span class="brand-copy">
+                        <span class="brand-title">Semantic Map</span>
+                        <span class="brand-subtitle">Терминологический анализ документов</span>
+                    </span>
+                </a>
+
+                <nav class="nav" aria-label="Основная навигация">
+                    {% for endpoint, label in navigation %}
+                        <a
+                            class="nav-link {% if request.endpoint == endpoint %}is-active{% endif %}"
+                            href="{{ url_for(endpoint) }}"
+                        >
+                            {{ label }}
+                        </a>
+                    {% endfor %}
+                </nav>
+            </div>
         </div>
     </header>
 
-    <main class="container page">
-        {% with messages = get_flashed_messages(with_categories=True) %}
-            {% if messages %}
-                <div class="flash-stack">
-                    {% for category, message in messages %}
-                        <div class="flash flash-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+    <main class="app-main">
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    <div class="flash-stack">
+                        {% for category, message in messages %}
+                            <div class="flash flash-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
 
-        {% block content %}{% endblock %}
+            {% block content %}{% endblock %}
+        </div>
     </main>
 </body>
 </html>

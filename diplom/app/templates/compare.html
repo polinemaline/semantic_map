@@ -1,13 +1,54 @@
 {% extends "base.html" %}
 
-{% block title %}Сравнение определений{% endblock %}
+{% block title %}Сравнение — Semantic Map{% endblock %}
 
 {% block content %}
-<section class="card">
-    <h1>Термины с разными определениями</h1>
-    <p class="muted">
-        На этой странице показаны термины, у которых найдено больше одного уникального определения.
-    </p>
+<section class="page-intro glass-panel">
+    <div>
+        <span class="eyebrow">Comparison workspace</span>
+        <h1>Сравнение определений</h1>
+        <p>
+            На этой странице собраны термины, для которых система обнаружила несколько
+            различных определений. Это позволяет быстро найти расхождения между документами
+            и перейти к подробной карточке термина.
+        </p>
+    </div>
+</section>
+
+<section class="stats-grid">
+    <article class="stat-card glass-panel">
+        <div class="stat-value">{{ conflicts|length }}</div>
+        <div class="stat-label">Конфликтующих терминов</div>
+    </article>
+
+    <article class="stat-card glass-panel">
+        <div class="stat-value">≠</div>
+        <div class="stat-label">Расхождения найдены</div>
+    </article>
+
+    <article class="stat-card glass-panel">
+        <div class="stat-value">TERM</div>
+        <div class="stat-label">Объект анализа</div>
+    </article>
+
+    <article class="stat-card glass-panel">
+        <div class="stat-value">DOC</div>
+        <div class="stat-label">Источники сравнения</div>
+    </article>
+</section>
+
+<section class="section-card glass-panel">
+    <div class="section-head">
+        <div>
+            <span class="eyebrow">Conflict registry</span>
+            <h2>Термины с разными определениями</h2>
+        </div>
+
+        <div class="page-actions">
+            <span class="info-pill">Найдено: {{ conflicts|length }}</span>
+            <a class="button button-secondary" href="{{ url_for('main.report') }}">К отчету</a>
+        </div>
+    </div>
 
     {% if conflicts %}
         <div class="table-wrap">
@@ -17,19 +58,30 @@
                         <th>Термин</th>
                         <th>Документов</th>
                         <th>Разных определений</th>
-                        <th></th>
+                        <th>Действия</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for term in conflicts %}
                         <tr>
-                            <td>{{ term.name }}</td>
-                            <td>{{ term.documents_count }}</td>
-                            <td>{{ term.unique_definitions_count }}</td>
                             <td>
-                                <a class="link" href="{{ url_for('main.term_detail', term_id=term.id) }}">
-                                    Открыть
-                                </a>
+                                <div class="table-title">{{ term.name }}</div>
+                            </td>
+                            <td>{{ term.documents_count }}</td>
+                            <td>
+                                <span class="status-pill" style="background: rgba(251, 113, 133, 0.14); color: #ffd0d8;">
+                                    {{ term.unique_definitions_count }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="page-actions">
+                                    <a class="text-link" href="{{ url_for('main.term_detail', term_id=term.id) }}">
+                                        Открыть
+                                    </a>
+                                    <a class="text-link" href="{{ url_for('main.semantic_map', term_id=term.id) }}">
+                                        Карта
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
@@ -37,7 +89,13 @@
             </table>
         </div>
     {% else %}
-        <p class="empty-text">Пока конфликтующих определений не найдено.</p>
+        <div class="empty-state">
+            <h3>Конфликтов пока нет</h3>
+            <p>
+                Сейчас система не обнаружила терминов, у которых есть несколько различных определений
+                в разных документах.
+            </p>
+        </div>
     {% endif %}
 </section>
 {% endblock %}

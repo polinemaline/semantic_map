@@ -1,27 +1,99 @@
 {% extends "base.html" %}
 
-{% block title %}Загрузка документа{% endblock %}
+{% block title %}Загрузка документа — Semantic Map{% endblock %}
 
 {% block content %}
-<section class="card narrow-card">
-    <h1>Загрузка документа</h1>
-    <p class="muted">
-        Для MVP поддерживаются текстовые PDF и DOCX. После загрузки система
-        сохранит текст документа и попытается автоматически извлечь термины и определения.
-    </p>
+<section class="page-intro glass-panel">
+    <div>
+        <span class="eyebrow">Upload workspace</span>
+        <h1>Загрузка документа</h1>
+        <p>
+            Добавь новый файл в систему, чтобы извлечь терминологические пары,
+            подготовить данные для сравнения и построения семантической карты.
+        </p>
+    </div>
+</section>
 
-    <form class="form" method="post" enctype="multipart/form-data">
-        <div class="form-group">
-            <label for="title">Название документа (необязательно)</label>
-            <input id="title" name="title" type="text" placeholder="Например: ГОСТ 123-2025">
+<section class="upload-layout">
+    <section class="glass-panel upload-main-card">
+        <div class="section-head">
+            <div>
+                <span class="eyebrow">New source</span>
+                <h2>Добавить документ</h2>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label for="file">Файл</label>
-            <input id="file" name="file" type="file" accept=".pdf,.docx" required>
-        </div>
+        <form class="form upload-form" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="title">Название документа</label>
+                <input
+                    id="title"
+                    name="title"
+                    type="text"
+                    placeholder="Например: ГОСТ P 52653-2006"
+                >
+            </div>
 
-        <button class="button" type="submit">Загрузить и обработать</button>
-    </form>
+            <div class="form-group">
+                <label for="file">Файл</label>
+                <div class="file-shell">
+                    <input
+                        id="file"
+                        name="file"
+                        type="file"
+                        accept=".pdf,.docx"
+                        required
+                    >
+                    <div class="file-shell-content">
+                        <div class="file-shell-icon">+</div>
+                        <div class="file-shell-text">
+                            <strong>Выбери PDF или DOCX</strong>
+                            <span>Файл будет загружен и сразу обработан системой</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="upload-actions">
+                <button class="button" type="submit">Загрузить и обработать</button>
+                <a class="button button-secondary" href="{{ url_for('main.documents') }}">К документам</a>
+            </div>
+        </form>
+    </section>
+
+    <aside class="upload-side">
+        <section class="glass-panel side-card">
+            <span class="panel-label">Поддерживаемые форматы</span>
+            <div class="mini-card-list">
+                <div class="mini-card">
+                    <strong>PDF</strong>
+                    <span>Подходит для нормативных документов и стандартов</span>
+                </div>
+                <div class="mini-card">
+                    <strong>DOCX</strong>
+                    <span>Удобен для редактируемых текстов и рабочих материалов</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel side-card">
+            <span class="panel-label">Что произойдет после загрузки</span>
+            <ul class="feature-list-vertical">
+                <li>Файл сохранится в системе</li>
+                <li>Текст будет извлечен автоматически</li>
+                <li>Будут найдены пары «термин — определение»</li>
+                <li>Документ появится в общем реестре</li>
+                <li>Его можно будет открыть в отчете и на карте</li>
+            </ul>
+        </section>
+
+        <section class="glass-panel side-card upload-tip-card">
+            <span class="panel-label">Рекомендации</span>
+            <p>
+                Лучше загружать текстовые PDF и DOCX без сканов: так извлечение терминов
+                будет точнее, а сравнение определений — чище.
+            </p>
+        </section>
+    </aside>
 </section>
 {% endblock %}
