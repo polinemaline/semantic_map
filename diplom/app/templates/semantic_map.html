@@ -3,25 +3,51 @@
 {% block title %}Семантическая карта — Semantic Map{% endblock %}
 
 {% block content %}
+{% set doc_ns = namespace(label='') %}
+{% for doc in documents %}
+    {% if selected_document_id == doc.id %}
+        {% set doc_ns.label = doc.title %}
+    {% endif %}
+{% endfor %}
+
+{% set term_ns = namespace(label='') %}
+{% for term in terms %}
+    {% if selected_term_id == term.id %}
+        {% set term_ns.label = term.name %}
+    {% endif %}
+{% endfor %}
+
 <style>
 .map-layout {
     display: grid;
     gap: 22px;
+    position: relative;
 }
 
 .map-top-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.7fr);
     gap: 22px;
+    position: relative;
+    z-index: 40;
 }
 
 .map-panel {
     padding: 28px;
+    overflow: visible;
+    position: relative;
+    z-index: 40;
+}
+
+.map-layout > .stats-grid,
+.map-layout > .section-card {
+    position: relative;
+    z-index: 1;
 }
 
 .map-form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
     gap: 16px;
     align-items: end;
 }
@@ -35,6 +61,89 @@
 .map-helper-list li {
     margin-bottom: 10px;
     line-height: 1.65;
+}
+
+.map-search {
+    position: relative;
+}
+
+.map-search-input {
+    width: 100%;
+    min-height: 54px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    color: #ffffff;
+    outline: none;
+    transition: 0.18s ease;
+}
+
+.map-search-input::placeholder {
+    color: rgba(211, 222, 245, 0.36);
+}
+
+.map-search-input:focus,
+.map-search.is-open .map-search-input {
+    border-color: rgba(91, 140, 255, 0.42);
+    box-shadow: 0 0 0 4px rgba(91, 140, 255, 0.12);
+    background: rgba(255,255,255,0.05);
+}
+
+.map-search-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    z-index: 120;
+    display: none;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 8px;
+    border-radius: 18px;
+    background: rgba(9, 15, 28, 0.98);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 20px 40px rgba(3, 8, 18, 0.28);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+.map-search.is-open .map-search-dropdown {
+    display: block;
+}
+
+.map-search-option {
+    width: 100%;
+    padding: 12px 14px;
+    border: none;
+    background: transparent;
+    color: rgba(232, 240, 255, 0.86);
+    border-radius: 12px;
+    text-align: left;
+    cursor: pointer;
+    line-height: 1.45;
+    transition: 0.18s ease;
+}
+
+.map-search-option:hover,
+.map-search-option.is-active {
+    background: rgba(255,255,255,0.06);
+    color: #ffffff;
+}
+
+.map-search-empty {
+    padding: 12px 14px;
+    color: rgba(205, 218, 245, 0.58);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.map-search-meta {
+    display: block;
+    margin-top: 4px;
+    color: rgba(205, 218, 245, 0.56);
+    font-size: 12px;
+    font-weight: 600;
 }
 
 .map-shell-wrap {
@@ -192,11 +301,6 @@
     color: #ead8ff;
 }
 
-.map-chip-related {
-    background: rgba(45, 212, 191, 0.14);
-    color: #d3fff6;
-}
-
 .map-chip-conflict {
     background: rgba(251, 113, 133, 0.14);
     color: #ffd0d8;
@@ -262,6 +366,163 @@
     box-shadow: 0 0 0 6px rgba(91, 140, 255, 0.10);
 }
 
+.definition-node-wrap {
+    overflow: visible;
+}
+
+.definition-node-card {
+    width: 100%;
+    height: 100%;
+    border-radius: 26px;
+    border: 1.2px solid #9b6dff;
+    background: linear-gradient(180deg, #24153b 0%, #171028 100%);
+    box-shadow: 0 14px 28px rgba(2, 7, 18, 0.28);
+    position: relative;
+    overflow: hidden;
+    padding: 56px 20px 18px;
+}
+
+.definition-node-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), transparent 34%);
+    pointer-events: none;
+}
+
+.definition-node-top-glow {
+    position: absolute;
+    top: 1.5px;
+    left: 1.5px;
+    right: 1.5px;
+    height: 28%;
+    min-height: 30px;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.04);
+    pointer-events: none;
+}
+
+.definition-node-accent {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    right: 16px;
+    height: 3.5px;
+    border-radius: 999px;
+    background: #bc96ff;
+    pointer-events: none;
+}
+
+.definition-node-badge {
+    position: absolute;
+    top: 24px;
+    left: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(155,109,255,0.14);
+    border: 1px solid rgba(255,255,255,0.05);
+    color: #ead8ff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.definition-node-content {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.definition-node-text {
+    width: 100%;
+    color: #f5efff;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 700;
+    text-align: center;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: none;
+}
+
+.definition-term-link {
+    display: inline;
+    color: #d6c5ff;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: rgba(214, 197, 255, 0.55);
+    text-underline-offset: 0.16em;
+    cursor: pointer;
+    transition: color 0.18s ease, text-decoration-color 0.18s ease;
+}
+
+.definition-term-link:hover {
+    color: #f0e8ff;
+    text-decoration-color: rgba(240, 232, 255, 0.9);
+}
+
+.map-term-tooltip-floating {
+    position: fixed;
+    z-index: 1000;
+    width: min(360px, calc(100vw - 24px));
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(10, 16, 30, 0.95);
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 18px 38px rgba(3, 8, 18, 0.26);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    pointer-events: none;
+    display: none;
+}
+
+.map-term-tooltip-floating.is-visible {
+    display: block;
+}
+
+.map-term-tooltip-title {
+    margin-bottom: 8px;
+    color: #eef4ff;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.map-term-tooltip-body {
+    color: rgba(232, 240, 255, 0.86);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: normal;
+}
+
+.definition-measurer-root {
+    position: fixed;
+    left: -10000px;
+    top: -10000px;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.definition-node-card.definition-node-card-measure {
+    height: auto;
+    min-height: 0;
+}
+
+.definition-node-card.definition-node-card-measure .definition-node-content {
+    height: auto;
+    min-height: 0;
+    display: block;
+}
+
 @media (max-width: 1180px) {
     .map-top-grid {
         grid-template-columns: 1fr;
@@ -314,29 +575,41 @@
                 </div>
             </div>
 
-            <form class="map-form-grid" method="get">
+            <form class="map-form-grid" method="get" id="map-filter-form">
                 <div class="form-group">
-                    <label for="document_id">Карта по документу</label>
-                    <select id="document_id" name="document_id">
-                        <option value="">Не выбрано</option>
-                        {% for doc in documents %}
-                            <option value="{{ doc.id }}" {% if selected_document_id == doc.id %}selected{% endif %}>
-                                {{ doc.title }}
-                            </option>
-                        {% endfor %}
-                    </select>
+                    <label for="document_search_input">Карта по документу</label>
+                    <div class="map-search" data-autocomplete="document">
+                        <input type="hidden" name="document_id" id="document_id_hidden" value="{{ selected_document_id or '' }}">
+                        <input
+                            id="document_search_input"
+                            class="map-search-input"
+                            type="text"
+                            value="{{ doc_ns.label }}"
+                            placeholder="Начни вводить название документа"
+                            autocomplete="off"
+                            spellcheck="false"
+                            data-autocomplete-input
+                        >
+                        <div class="map-search-dropdown" data-autocomplete-dropdown></div>
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="term_id">Карта по термину</label>
-                    <select id="term_id" name="term_id">
-                        <option value="">Не выбрано</option>
-                        {% for term in terms %}
-                            <option value="{{ term.id }}" {% if selected_term_id == term.id %}selected{% endif %}>
-                                {{ term.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
+                    <label for="term_search_input">Карта по термину</label>
+                    <div class="map-search" data-autocomplete="term">
+                        <input type="hidden" name="term_id" id="term_id_hidden" value="{{ selected_term_id or '' }}">
+                        <input
+                            id="term_search_input"
+                            class="map-search-input"
+                            type="text"
+                            value="{{ term_ns.label }}"
+                            placeholder="Начни вводить термин"
+                            autocomplete="off"
+                            spellcheck="false"
+                            data-autocomplete-input
+                        >
+                        <div class="map-search-dropdown" data-autocomplete-dropdown></div>
+                    </div>
                 </div>
 
                 <div class="page-actions">
@@ -361,10 +634,10 @@
         <aside class="glass-panel map-panel">
             <span class="panel-label">Навигация</span>
             <ul class="map-helper-list">
+                <li>Начни печатать в поле документа или термина, чтобы увидеть подходящие варианты.</li>
                 <li>Зажми левую кнопку мыши и перетаскивай карту.</li>
                 <li>Колесико мыши изменяет масштаб.</li>
-                <li>Справа сверху доступны только zoom-кнопки.</li>
-                <li>Карта визуально согласована с остальным интерфейсом сайта.</li>
+                <li>Термины внутри определений можно навести, чтобы увидеть подсказку.</li>
             </ul>
         </aside>
     </div>
@@ -399,7 +672,7 @@
                 </div>
             </div>
 
-            <div class="map-shell-wrap">
+            <div class="map-shell-wrap" id="map-shell-wrap">
                 <details class="map-floating map-legend">
                     <summary class="map-legend-summary">Легенда</summary>
                     <div class="map-legend-panel">
@@ -407,7 +680,6 @@
                             <span class="map-chip map-chip-doc">Документ</span>
                             <span class="map-chip map-chip-term">Термин</span>
                             <span class="map-chip map-chip-def">Определение</span>
-                            <span class="map-chip map-chip-related">Термин внутри определения</span>
                             <span class="map-chip map-chip-conflict">Конфликт</span>
                             <span class="map-chip map-chip-shared">В нескольких документах</span>
                         </div>
@@ -434,687 +706,1101 @@
                         <svg id="semantic-map-svg" class="semantic-map-svg" preserveAspectRatio="xMidYMin meet"></svg>
                     </div>
                 </div>
+
+                <div id="map-term-tooltip" class="map-term-tooltip-floating"></div>
             </div>
         </section>
 
-        <script>
-        const nodes = {{ nodes_json|safe }};
-        const edges = {{ edges_json|safe }};
-        const mode = {{ map_summary.mode|tojson }};
+        <div id="definition-measurer-root" class="definition-measurer-root"></div>
 
-        const svg = document.getElementById("semantic-map-svg");
-        const mapShell = document.getElementById("map-shell");
-        const mapSurface = document.getElementById("map-surface");
-        const NS = "http://www.w3.org/2000/svg";
+<script>
+const nodes = {{ nodes_json|safe }};
+const edges = {{ edges_json|safe }};
+const mode = {{ map_summary.mode|tojson }};
 
-        let currentScale = 1;
-        let isDragging = false;
-        let dragStartX = 0;
-        let dragStartY = 0;
-        let scrollStartLeft = 0;
-        let scrollStartTop = 0;
+const documentsSource = [
+    {% for doc in documents %}
+    { id: "{{ doc.id }}", label: {{ doc.title|tojson }}, meta: {{ doc.original_filename|tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
 
-        function createSvgElement(name, attrs = {}) {
-            const el = document.createElementNS(NS, name);
-            Object.entries(attrs).forEach(([key, value]) => {
-                el.setAttribute(key, String(value));
-            });
-            return el;
+const termsSource = [
+    {% for term in terms %}
+    { id: "{{ term.id }}", label: {{ term.name|tojson }}, meta: "" }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+const svg = document.getElementById("semantic-map-svg");
+const mapShell = document.getElementById("map-shell");
+const mapSurface = document.getElementById("map-surface");
+const mapShellWrap = document.getElementById("map-shell-wrap");
+const tooltipEl = document.getElementById("map-term-tooltip");
+const measureRoot = document.getElementById("definition-measurer-root");
+const NS = "http://www.w3.org/2000/svg";
+
+let currentScale = 1;
+let isDragging = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let scrollStartLeft = 0;
+let scrollStartTop = 0;
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+function initAutocomplete(root, items) {
+    const hidden = root.querySelector('input[type="hidden"]');
+    const input = root.querySelector("[data-autocomplete-input]");
+    const dropdown = root.querySelector("[data-autocomplete-dropdown]");
+
+    let filtered = [];
+    let activeIndex = -1;
+    let selectedId = hidden.value || "";
+    let selectedLabel = input.value || "";
+
+    function scoreItem(item, query) {
+        const label = item.label.toLowerCase();
+        if (!query) return 1;
+        if (label === query) return 1000;
+        if (label.startsWith(query)) return 700;
+        if (label.includes(query)) return 400;
+        return 0;
+    }
+
+    function filterItems(query) {
+        const normalized = query.trim().toLowerCase();
+
+        if (!normalized) {
+            return items.slice(0, 8);
         }
 
-        function wrapLabel(text, maxLen = 24) {
-            const words = String(text || "").split(/\s+/);
-            const lines = [];
-            let current = "";
+        return items
+            .map(item => ({ ...item, _score: scoreItem(item, normalized) }))
+            .filter(item => item._score > 0)
+            .sort((a, b) => b._score - a._score || a.label.localeCompare(b.label, "ru"))
+            .slice(0, 8);
+    }
 
-            for (const word of words) {
-                const candidate = current ? current + " " + word : word;
-                if (candidate.length <= maxLen) {
-                    current = candidate;
-                } else {
-                    if (current) lines.push(current);
-                    current = word;
-                }
+    function closeDropdown() {
+        root.classList.remove("is-open");
+        activeIndex = -1;
+    }
+
+    function openDropdown() {
+        root.classList.add("is-open");
+    }
+
+    function selectItem(item) {
+        selectedId = item.id;
+        selectedLabel = item.label;
+        hidden.value = item.id;
+        input.value = item.label;
+        closeDropdown();
+    }
+
+    function clearSelection() {
+        selectedId = "";
+        selectedLabel = "";
+        hidden.value = "";
+    }
+
+    function renderDropdown() {
+        filtered = filterItems(input.value);
+        dropdown.innerHTML = "";
+
+        if (filtered.length === 0) {
+            dropdown.innerHTML = '<div class="map-search-empty">Ничего не найдено</div>';
+            openDropdown();
+            return;
+        }
+
+        filtered.forEach((item, index) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "map-search-option";
+            if (index === activeIndex) {
+                button.classList.add("is-active");
             }
 
-            if (current) lines.push(current);
-            return lines.slice(0, 6);
-        }
+            button.innerHTML = `
+                <span>${escapeHtml(item.label)}</span>
+                ${item.meta ? `<span class="map-search-meta">${escapeHtml(item.meta)}</span>` : ""}
+            `;
 
-        function getNodeKind(node) {
-            const rawColor = String(node.color || "").toLowerCase();
-
-            if (node.type === "document") return "document";
-            if (node.type === "definition") return "definition";
-            if (node.type === "related_term") return "related";
-            if (rawColor.includes("red")) return "conflict";
-            if (rawColor.includes("green")) return "shared";
-            return "term";
-        }
-
-        function getNodePalette(kind) {
-            if (kind === "document") {
-                return {
-                    fill: "#0f1b33",
-                    stroke: "#5b8cff",
-                    accent: "#7aa3ff",
-                    badgeFill: "rgba(91,140,255,0.14)",
-                    badgeText: "#d4e1ff",
-                    text: "#eef4ff",
-                    label: "DOC"
-                };
-            }
-
-            if (kind === "definition") {
-                return {
-                    fill: "#1a1230",
-                    stroke: "#9b6dff",
-                    accent: "#bc96ff",
-                    badgeFill: "rgba(155,109,255,0.14)",
-                    badgeText: "#ead8ff",
-                    text: "#f5efff",
-                    label: "DEF"
-                };
-            }
-
-            if (kind === "related") {
-                return {
-                    fill: "#0f2323",
-                    stroke: "#2dd4bf",
-                    accent: "#7ff2e3",
-                    badgeFill: "rgba(45,212,191,0.14)",
-                    badgeText: "#d3fff6",
-                    text: "#eefffb",
-                    label: "REL"
-                };
-            }
-
-            if (kind === "conflict") {
-                return {
-                    fill: "#28131c",
-                    stroke: "#fb7185",
-                    accent: "#ff9dad",
-                    badgeFill: "rgba(251,113,133,0.14)",
-                    badgeText: "#ffd0d8",
-                    text: "#fff3f6",
-                    label: "TERM"
-                };
-            }
-
-            if (kind === "shared") {
-                return {
-                    fill: "#102118",
-                    stroke: "#35d49a",
-                    accent: "#8ef3c7",
-                    badgeFill: "rgba(53,212,154,0.14)",
-                    badgeText: "#d7ffec",
-                    text: "#f2fff9",
-                    label: "TERM"
-                };
-            }
-
-            return {
-                fill: "#141731",
-                stroke: "#7c82ff",
-                accent: "#b2b6ff",
-                badgeFill: "rgba(124,130,255,0.14)",
-                badgeText: "#e0e3ff",
-                text: "#f3f4ff",
-                label: "TERM"
-            };
-        }
-
-        function getNodeStyle(node) {
-            if (node.type === "document") {
-                return { width: 300, maxLen: 24, lineHeight: 18, paddingY: 64 };
-            }
-
-            if (node.type === "definition") {
-                return { width: 470, maxLen: 34, lineHeight: 17, paddingY: 68 };
-            }
-
-            if (node.type === "related_term") {
-                return { width: 300, maxLen: 24, lineHeight: 17, paddingY: 62 };
-            }
-
-            return { width: 320, maxLen: 24, lineHeight: 17, paddingY: 62 };
-        }
-
-        function prepareNodes(nodes) {
-            return nodes.map(node => {
-                const style = getNodeStyle(node);
-                const lines = wrapLabel(node.label, style.maxLen);
-                const height = Math.max(96, lines.length * style.lineHeight + style.paddingY);
-                const kind = getNodeKind(node);
-                const palette = getNodePalette(kind);
-
-                return {
-                    ...node,
-                    kind,
-                    palette,
-                    width: style.width,
-                    height,
-                    lines,
-                    lineHeight: style.lineHeight,
-                };
-            });
-        }
-
-        function indexNodesById(list) {
-            const map = new Map();
-            list.forEach(node => map.set(node.id, node));
-            return map;
-        }
-
-        function sortNodesByLabel(list) {
-            return [...list].sort((a, b) => String(a.label).localeCompare(String(b.label), "ru"));
-        }
-
-        function buildDocumentModeLayout(preparedNodes, edges) {
-            const documentNodes = preparedNodes.filter(node => node.type === "document");
-            const termNodes = sortNodesByLabel(preparedNodes.filter(node => node.type === "term"));
-            const nodeById = indexNodesById(preparedNodes);
-
-            const termToDefinition = new Map();
-            edges.filter(edge => edge.label === "имеет определение")
-                .forEach(edge => termToDefinition.set(edge.source, edge.target));
-
-            const definitionToRelated = new Map();
-            edges.filter(edge => edge.label === "упоминает термин")
-                .forEach(edge => {
-                    if (!definitionToRelated.has(edge.source)) {
-                        definitionToRelated.set(edge.source, []);
-                    }
-                    definitionToRelated.get(edge.source).push(edge.target);
-                });
-
-            const positions = {};
-            const laneX = {
-                document: 290,
-                term: 790,
-                definition: 1450,
-                related: 2030,
-            };
-
-            const termSpacing = 186;
-            const relatedSpacing = 124;
-            const topY = 220;
-
-            termNodes.forEach((termNode, index) => {
-                const y = topY + index * termSpacing;
-
-                positions[termNode.id] = {
-                    x: laneX.term,
-                    y,
-                    width: termNode.width,
-                    height: termNode.height,
-                };
-
-                const defId = termToDefinition.get(termNode.id);
-                if (defId) {
-                    const defNode = nodeById.get(defId);
-                    if (defNode) {
-                        positions[defNode.id] = {
-                            x: laneX.definition,
-                            y,
-                            width: defNode.width,
-                            height: defNode.height,
-                        };
-
-                        const relatedIds = definitionToRelated.get(defId) || [];
-                        relatedIds.forEach((relatedId, relIndex) => {
-                            const relatedNode = nodeById.get(relatedId);
-                            if (!relatedNode) return;
-
-                            if (!positions[relatedId]) {
-                                positions[relatedId] = {
-                                    x: laneX.related,
-                                    y: y + relIndex * relatedSpacing,
-                                    width: relatedNode.width,
-                                    height: relatedNode.height,
-                                };
-                            }
-                        });
-                    }
-                }
+            button.addEventListener("mousedown", event => {
+                event.preventDefault();
+                selectItem(item);
             });
 
-            const documentToTerms = new Map();
-            edges.filter(edge => edge.label === "содержит термин")
-                .forEach(edge => {
-                    if (!documentToTerms.has(edge.source)) {
-                        documentToTerms.set(edge.source, []);
-                    }
-                    documentToTerms.get(edge.source).push(edge.target);
-                });
-
-            documentNodes.forEach((docNode, index) => {
-                const linkedTerms = documentToTerms.get(docNode.id) || [];
-                const linkedYs = linkedTerms
-                    .map(termId => positions[termId]?.y)
-                    .filter(value => typeof value === "number");
-
-                const y = linkedYs.length
-                    ? linkedYs.reduce((sum, value) => sum + value, 0) / linkedYs.length
-                    : topY + index * termSpacing;
-
-                positions[docNode.id] = {
-                    x: laneX.document,
-                    y,
-                    width: docNode.width,
-                    height: docNode.height,
-                };
-            });
-
-            const laneHeaders = [
-                { x: laneX.document, label: "Документы" },
-                { x: laneX.term, label: "Термины" },
-                { x: laneX.definition, label: "Определения" },
-                { x: laneX.related, label: "Связанные термины" },
-            ];
-
-            return { positions, laneHeaders };
-        }
-
-        function buildTermModeLayout(preparedNodes, edges) {
-            const documentNodes = sortNodesByLabel(preparedNodes.filter(node => node.type === "document"));
-            const mainTermNodes = preparedNodes.filter(node => node.type === "term");
-            const definitionNodes = preparedNodes.filter(node => node.type === "definition");
-            const nodeById = indexNodesById(preparedNodes);
-
-            const positions = {};
-            const laneX = {
-                document: 290,
-                term: 880,
-                definition: 1490,
-                related: 2070,
-            };
-
-            const docSpacing = 134;
-            const defSpacing = 234;
-            const relatedSpacing = 124;
-            const topY = 220;
-
-            documentNodes.forEach((docNode, index) => {
-                positions[docNode.id] = {
-                    x: laneX.document,
-                    y: topY + index * docSpacing,
-                    width: docNode.width,
-                    height: docNode.height,
-                };
-            });
-
-            const mainTermNode = mainTermNodes[0];
-            if (mainTermNode) {
-                const docHeight = documentNodes.length > 1 ? (documentNodes.length - 1) * docSpacing : 0;
-                const defHeight = definitionNodes.length > 1 ? (definitionNodes.length - 1) * defSpacing : 0;
-                const centerY = topY + Math.max(docHeight, defHeight) / 2;
-
-                positions[mainTermNode.id] = {
-                    x: laneX.term,
-                    y: centerY,
-                    width: mainTermNode.width,
-                    height: mainTermNode.height,
-                };
-            }
-
-            definitionNodes.forEach((defNode, index) => {
-                const y = topY + index * defSpacing;
-                positions[defNode.id] = {
-                    x: laneX.definition,
-                    y,
-                    width: defNode.width,
-                    height: defNode.height,
-                };
-            });
-
-            const definitionToRelated = new Map();
-            edges.filter(edge => edge.label === "упоминает термин")
-                .forEach(edge => {
-                    if (!definitionToRelated.has(edge.source)) {
-                        definitionToRelated.set(edge.source, []);
-                    }
-                    definitionToRelated.get(edge.source).push(edge.target);
-                });
-
-            definitionNodes.forEach(defNode => {
-                const defPos = positions[defNode.id];
-                const relatedIds = definitionToRelated.get(defNode.id) || [];
-
-                relatedIds.forEach((relatedId, relIndex) => {
-                    const relatedNode = nodeById.get(relatedId);
-                    if (!relatedNode) return;
-
-                    if (!positions[relatedId]) {
-                        positions[relatedId] = {
-                            x: laneX.related,
-                            y: defPos.y + relIndex * relatedSpacing,
-                            width: relatedNode.width,
-                            height: relatedNode.height,
-                        };
-                    }
-                });
-            });
-
-            const laneHeaders = [
-                { x: laneX.document, label: "Документы" },
-                { x: laneX.term, label: "Выбранный термин" },
-                { x: laneX.definition, label: "Определения" },
-                { x: laneX.related, label: "Связанные термины" },
-            ];
-
-            return { positions, laneHeaders };
-        }
-
-        function computeCanvasSize(positions) {
-            let maxX = 0;
-            let maxY = 0;
-
-            Object.values(positions).forEach(pos => {
-                maxX = Math.max(maxX, pos.x + pos.width / 2 + 220);
-                maxY = Math.max(maxY, pos.y + pos.height / 2 + 220);
-            });
-
-            return {
-                width: Math.max(2480, maxX),
-                height: Math.max(1200, maxY),
-            };
-        }
-
-        function drawLaneGuides(laneHeaders, canvasHeight) {
-            laneHeaders.forEach(item => {
-                const guide = createSvgElement("line", {
-                    x1: item.x,
-                    y1: 120,
-                    x2: item.x,
-                    y2: canvasHeight - 80,
-                    stroke: "rgba(148, 163, 184, 0.18)",
-                    "stroke-width": "1",
-                    "stroke-dasharray": "6 10"
-                });
-                svg.appendChild(guide);
-
-                const label = createSvgElement("text", {
-                    x: item.x,
-                    y: 84,
-                    "text-anchor": "middle",
-                    fill: "#7d8aa5",
-                    "font-size": "13",
-                    "font-weight": "800",
-                    "letter-spacing": "0.18em"
-                });
-                label.textContent = item.label.toUpperCase();
-                svg.appendChild(label);
-            });
-        }
-
-        function getEdgeColor(edge) {
-            if (edge.label === "содержит термин") return "#6b7d9f";
-            if (edge.label === "имеет определение") return "#8f79ff";
-            if (edge.label === "упоминает термин") return "#27c9b7";
-            return "#7d8aa5";
-        }
-
-        function drawPath(sourcePos, targetPos, edgeColor, dashed = false) {
-            const startX = sourcePos.x + sourcePos.width / 2;
-            const startY = sourcePos.y;
-            const endX = targetPos.x - targetPos.width / 2;
-            const endY = targetPos.y;
-            const midX = startX + (endX - startX) / 2;
-
-            const d = [
-                `M ${startX} ${startY}`,
-                `L ${midX} ${startY}`,
-                `L ${midX} ${endY}`,
-                `L ${endX} ${endY}`
-            ].join(" ");
-
-            const path = createSvgElement("path", {
-                d,
-                fill: "none",
-                stroke: edgeColor,
-                "stroke-width": dashed ? "2.3" : "2.7",
-                "stroke-linecap": "round",
-                "stroke-linejoin": "round",
-                opacity: dashed ? "0.85" : "0.62"
-            });
-
-            if (dashed) {
-                path.setAttribute("stroke-dasharray", "8 8");
-            }
-
-            svg.appendChild(path);
-        }
-
-        function drawNode(node, pos) {
-            const group = createSvgElement("g");
-
-            const shadow = createSvgElement("rect", {
-                x: pos.x - pos.width / 2,
-                y: pos.y - pos.height / 2,
-                width: pos.width,
-                height: pos.height,
-                rx: 26,
-                ry: 26,
-                fill: node.palette.fill,
-                stroke: node.palette.stroke,
-                "stroke-width": "1.2",
-                filter: "url(#nodeShadow)"
-            });
-            group.appendChild(shadow);
-
-            const topGlow = createSvgElement("rect", {
-                x: pos.x - pos.width / 2 + 1.5,
-                y: pos.y - pos.height / 2 + 1.5,
-                width: pos.width - 3,
-                height: Math.max(30, pos.height * 0.28),
-                rx: 24,
-                ry: 24,
-                fill: "rgba(255,255,255,0.04)"
-            });
-            group.appendChild(topGlow);
-
-            const accent = createSvgElement("rect", {
-                x: pos.x - pos.width / 2 + 16,
-                y: pos.y - pos.height / 2 + 14,
-                width: pos.width - 32,
-                height: 3.5,
-                rx: 999,
-                ry: 999,
-                fill: node.palette.accent
-            });
-            group.appendChild(accent);
-
-            const badgeWidth = node.palette.label.length * 9 + 20;
-            const badge = createSvgElement("rect", {
-                x: pos.x - pos.width / 2 + 18,
-                y: pos.y - pos.height / 2 + 24,
-                width: badgeWidth,
-                height: 24,
-                rx: 999,
-                ry: 999,
-                fill: node.palette.badgeFill,
-                stroke: "rgba(255,255,255,0.05)",
-                "stroke-width": "1"
-            });
-            group.appendChild(badge);
-
-            const badgeText = createSvgElement("text", {
-                x: pos.x - pos.width / 2 + 18 + badgeWidth / 2,
-                y: pos.y - pos.height / 2 + 36,
-                "text-anchor": "middle",
-                "dominant-baseline": "middle",
-                fill: node.palette.badgeText,
-                "font-size": "11",
-                "font-weight": "800",
-                "letter-spacing": "0.12em"
-            });
-            badgeText.textContent = node.palette.label;
-            group.appendChild(badgeText);
-
-            const startY = pos.y - ((node.lines.length - 1) * node.lineHeight) / 2 + 14;
-
-            node.lines.forEach((lineText, index) => {
-                const text = createSvgElement("text", {
-                    x: pos.x,
-                    y: startY + index * node.lineHeight,
-                    "text-anchor": "middle",
-                    "dominant-baseline": "middle",
-                    fill: node.palette.text,
-                    "font-size": node.type === "definition" ? "14" : "14.5",
-                    "font-weight": "700"
-                });
-                text.textContent = lineText;
-                group.appendChild(text);
-            });
-
-            svg.appendChild(group);
-        }
-
-        function createDefs() {
-            const defs = createSvgElement("defs");
-
-            const filter = createSvgElement("filter", {
-                id: "nodeShadow",
-                x: "-30%",
-                y: "-30%",
-                width: "180%",
-                height: "180%"
-            });
-
-            filter.appendChild(createSvgElement("feDropShadow", {
-                dx: "0",
-                dy: "14",
-                stdDeviation: "16",
-                "flood-color": "#020617",
-                "flood-opacity": "0.35"
-            }));
-
-            defs.appendChild(filter);
-            svg.appendChild(defs);
-        }
-
-        function renderMap() {
-            svg.innerHTML = "";
-            createDefs();
-
-            const preparedNodes = prepareNodes(nodes);
-            const nodeById = indexNodesById(preparedNodes);
-            const layout = mode === "document"
-                ? buildDocumentModeLayout(preparedNodes, edges)
-                : buildTermModeLayout(preparedNodes, edges);
-
-            const positions = layout.positions;
-            const laneHeaders = layout.laneHeaders;
-            const canvasSize = computeCanvasSize(positions);
-
-            svg.setAttribute("viewBox", `0 0 ${canvasSize.width} ${canvasSize.height}`);
-            svg.setAttribute("width", canvasSize.width);
-            svg.setAttribute("height", canvasSize.height);
-
-            drawLaneGuides(laneHeaders, canvasSize.height);
-
-            edges.forEach(edge => {
-                const sourceNode = nodeById.get(edge.source);
-                const targetNode = nodeById.get(edge.target);
-                const sourcePos = positions[edge.source];
-                const targetPos = positions[edge.target];
-
-                if (!sourceNode || !targetNode || !sourcePos || !targetPos) return;
-
-                drawPath(
-                    sourcePos,
-                    targetPos,
-                    getEdgeColor(edge),
-                    edge.label === "упоминает термин"
-                );
-            });
-
-            preparedNodes.forEach(node => {
-                const pos = positions[node.id];
-                if (!pos) return;
-                drawNode(node, pos);
-            });
-        }
-
-        function applyScale() {
-            mapSurface.style.transform = `scale(${currentScale})`;
-        }
-
-        function zoomIn() {
-            currentScale = Math.min(1.85, currentScale + 0.1);
-            applyScale();
-        }
-
-        function zoomOut() {
-            currentScale = Math.max(0.55, currentScale - 0.1);
-            applyScale();
-        }
-
-        function zoomReset() {
-            currentScale = 1;
-            applyScale();
-        }
-
-        function setInitialScroll() {
-            mapShell.scrollLeft = 120;
-            mapShell.scrollTop = 0;
-        }
-
-        document.querySelectorAll(".map-zoom-btn").forEach(button => {
-            button.addEventListener("click", () => {
-                const action = button.dataset.action;
-                if (action === "zoom-in") zoomIn();
-                if (action === "zoom-out") zoomOut();
-                if (action === "zoom-reset") zoomReset();
-            });
+            dropdown.appendChild(button);
         });
 
-        mapShell.addEventListener("mousedown", event => {
-            isDragging = true;
-            dragStartX = event.clientX;
-            dragStartY = event.clientY;
-            scrollStartLeft = mapShell.scrollLeft;
-            scrollStartTop = mapShell.scrollTop;
-            mapShell.classList.add("dragging");
-        });
+        openDropdown();
+    }
 
-        window.addEventListener("mouseup", () => {
-            isDragging = false;
-            mapShell.classList.remove("dragging");
-        });
+    function trySelectExactMatch() {
+        const query = input.value.trim().toLowerCase();
+        if (!query) {
+            clearSelection();
+            return;
+        }
 
-        mapShell.addEventListener("mouseleave", () => {
-            isDragging = false;
-            mapShell.classList.remove("dragging");
-        });
+        const exact = items.find(item => item.label.trim().toLowerCase() === query);
+        if (exact) {
+            selectItem(exact);
+        } else if (input.value.trim() !== selectedLabel) {
+            clearSelection();
+        }
+    }
 
-        window.addEventListener("mousemove", event => {
-            if (!isDragging) return;
+    input.addEventListener("focus", () => {
+        activeIndex = -1;
+        renderDropdown();
+    });
 
-            const dx = event.clientX - dragStartX;
-            const dy = event.clientY - dragStartY;
+    input.addEventListener("input", () => {
+        if (input.value.trim() !== selectedLabel) {
+            clearSelection();
+        }
+        activeIndex = -1;
+        renderDropdown();
+    });
 
-            mapShell.scrollLeft = scrollStartLeft - dx;
-            mapShell.scrollTop = scrollStartTop - dy;
-        });
+    input.addEventListener("keydown", event => {
+        if (!root.classList.contains("is-open")) {
+            if (event.key === "ArrowDown") {
+                activeIndex = 0;
+                renderDropdown();
+                event.preventDefault();
+            }
+            return;
+        }
 
-        mapShell.addEventListener("wheel", event => {
+        if (event.key === "ArrowDown") {
+            activeIndex = Math.min(activeIndex + 1, filtered.length - 1);
+            renderDropdown();
             event.preventDefault();
-
-            if (event.deltaY < 0) {
-                zoomIn();
+        } else if (event.key === "ArrowUp") {
+            activeIndex = Math.max(activeIndex - 1, 0);
+            renderDropdown();
+            event.preventDefault();
+        } else if (event.key === "Enter") {
+            if (activeIndex >= 0 && filtered[activeIndex]) {
+                event.preventDefault();
+                selectItem(filtered[activeIndex]);
             } else {
-                zoomOut();
+                trySelectExactMatch();
+                closeDropdown();
             }
-        }, { passive: false });
-
-        if (nodes.length > 0) {
-            renderMap();
-            applyScale();
-            requestAnimationFrame(setInitialScroll);
+        } else if (event.key === "Escape") {
+            closeDropdown();
         }
-        </script>
+    });
+
+    input.addEventListener("blur", () => {
+        setTimeout(() => {
+            trySelectExactMatch();
+            closeDropdown();
+        }, 120);
+    });
+}
+
+function initAutocompletes() {
+    const documentRoot = document.querySelector('[data-autocomplete="document"]');
+    const termRoot = document.querySelector('[data-autocomplete="term"]');
+
+    initAutocomplete(documentRoot, documentsSource);
+    initAutocomplete(termRoot, termsSource);
+
+    document.addEventListener("click", event => {
+        document.querySelectorAll(".map-search").forEach(root => {
+            if (!root.contains(event.target)) {
+                root.classList.remove("is-open");
+            }
+        });
+    });
+}
+
+function createSvgElement(name, attrs = {}) {
+    const el = document.createElementNS(NS, name);
+    Object.entries(attrs).forEach(([key, value]) => {
+        el.setAttribute(key, String(value));
+    });
+    return el;
+}
+
+function wrapLabel(text, maxLen = 24) {
+    const words = String(text || "").split(/\s+/);
+    const lines = [];
+    let current = "";
+
+    for (const word of words) {
+        const candidate = current ? current + " " + word : word;
+        if (candidate.length <= maxLen) {
+            current = candidate;
+        } else {
+            if (current) lines.push(current);
+            current = word;
+        }
+    }
+
+    if (current) lines.push(current);
+    return lines.slice(0, 6);
+}
+
+function getNodeKind(node) {
+    const rawColor = String(node.color || "").toLowerCase();
+
+    if (node.type === "document") return "document";
+    if (node.type === "definition") return "definition";
+    if (node.type === "related_term") return "related";
+    if (rawColor.includes("red")) return "conflict";
+    if (rawColor.includes("green")) return "shared";
+    return "term";
+}
+
+function getNodePalette(kind) {
+    if (kind === "document") {
+        return {
+            fill: "#0f1b33",
+            stroke: "#5b8cff",
+            accent: "#7aa3ff",
+            badgeFill: "rgba(91,140,255,0.14)",
+            badgeText: "#d4e1ff",
+            text: "#eef4ff",
+            label: "DOC"
+        };
+    }
+
+    if (kind === "definition") {
+        return {
+            fill: "#24153b",
+            stroke: "#9b6dff",
+            accent: "#bc96ff",
+            badgeFill: "rgba(155,109,255,0.14)",
+            badgeText: "#ead8ff",
+            text: "#f5efff",
+            label: "DEF"
+        };
+    }
+
+    if (kind === "related") {
+        return {
+            fill: "#0f2323",
+            stroke: "#2dd4bf",
+            accent: "#7ff2e3",
+            badgeFill: "rgba(45,212,191,0.14)",
+            badgeText: "#d3fff6",
+            text: "#eefffb",
+            label: "REL"
+        };
+    }
+
+    if (kind === "conflict") {
+        return {
+            fill: "#28131c",
+            stroke: "#fb7185",
+            accent: "#ff9dad",
+            badgeFill: "rgba(251,113,133,0.14)",
+            badgeText: "#ffd0d8",
+            text: "#fff3f6",
+            label: "TERM"
+        };
+    }
+
+    if (kind === "shared") {
+        return {
+            fill: "#102118",
+            stroke: "#35d49a",
+            accent: "#8ef3c7",
+            badgeFill: "rgba(53,212,154,0.14)",
+            badgeText: "#d7ffec",
+            text: "#f2fff9",
+            label: "TERM"
+        };
+    }
+
+    return {
+        fill: "#141731",
+        stroke: "#7c82ff",
+        accent: "#b2b6ff",
+        badgeFill: "rgba(124,130,255,0.14)",
+        badgeText: "#e0e3ff",
+        text: "#f3f4ff",
+        label: "TERM"
+    };
+}
+
+function getNodeStyle(node) {
+    if (node.type === "document") {
+        return { width: 300, maxLen: 24, lineHeight: 18, paddingY: 64 };
+    }
+
+    if (node.type === "definition") {
+        return { width: 490, maxLen: 34, lineHeight: 17, paddingY: 86 };
+    }
+
+    return { width: 320, maxLen: 24, lineHeight: 17, paddingY: 62 };
+}
+
+function buildTermDefinitionsMap(allNodes, allEdges) {
+    const allNodeById = new Map();
+    allNodes.forEach(node => allNodeById.set(node.id, node));
+
+    const termDefinitionMap = {};
+
+    allEdges.forEach(edge => {
+        if (edge.label !== "имеет определение") return;
+
+        const sourceNode = allNodeById.get(edge.source);
+        const targetNode = allNodeById.get(edge.target);
+
+        if (!sourceNode || !targetNode || targetNode.type !== "definition") return;
+
+        const key = String(sourceNode.label || "").toLowerCase();
+        if (!termDefinitionMap[key]) {
+            termDefinitionMap[key] = {
+                label: String(sourceNode.label || ""),
+                definitions: []
+            };
+        }
+
+        if (!termDefinitionMap[key].definitions.includes(String(targetNode.label || ""))) {
+            termDefinitionMap[key].definitions.push(String(targetNode.label || ""));
+        }
+    });
+
+    return termDefinitionMap;
+}
+
+function buildDefinitionMentionsMap(allNodes, allEdges) {
+    const allNodeById = new Map();
+    allNodes.forEach(node => allNodeById.set(node.id, node));
+
+    const mentionsMap = new Map();
+
+    allEdges.forEach(edge => {
+        if (edge.label !== "упоминает термин") return;
+
+        const sourceNode = allNodeById.get(edge.source);
+        const targetNode = allNodeById.get(edge.target);
+
+        if (!sourceNode || !targetNode || sourceNode.type !== "definition") return;
+
+        if (!mentionsMap.has(sourceNode.id)) {
+            mentionsMap.set(sourceNode.id, []);
+        }
+
+        const arr = mentionsMap.get(sourceNode.id);
+        const label = String(targetNode.label || "");
+        if (!arr.includes(label)) {
+            arr.push(label);
+        }
+    });
+
+    return mentionsMap;
+}
+
+function isWordChar(char) {
+    return /[0-9A-Za-zА-Яа-яЁё_-]/.test(char);
+}
+
+function hasBoundary(text, start, end) {
+    const prev = start > 0 ? text[start - 1] : "";
+    const next = end < text.length ? text[end] : "";
+    return !isWordChar(prev) && !isWordChar(next);
+}
+
+function buildDefinitionMarkup(text, mentionedTerms) {
+    if (!mentionedTerms || mentionedTerms.length === 0) {
+        return escapeHtml(text);
+    }
+
+    const original = String(text || "");
+    const lower = original.toLowerCase();
+    const terms = [...mentionedTerms].sort((a, b) => b.length - a.length);
+
+    let result = "";
+    let index = 0;
+
+    while (index < original.length) {
+        let matched = null;
+
+        for (const term of terms) {
+            const lowerTerm = term.toLowerCase();
+            if (lower.startsWith(lowerTerm, index)) {
+                const end = index + term.length;
+                if (hasBoundary(original, index, end)) {
+                    matched = {
+                        text: original.slice(index, end),
+                        label: term,
+                        end,
+                    };
+                    break;
+                }
+            }
+        }
+
+        if (matched) {
+            result += `<span class="definition-term-link" data-term-label="${escapeHtml(matched.label)}">${escapeHtml(matched.text)}</span>`;
+            index = matched.end;
+        } else {
+            result += escapeHtml(original[index]);
+            index += 1;
+        }
+    }
+
+    return result;
+}
+
+function measureDefinitionHeight(markup, width) {
+    const card = document.createElement("div");
+    card.className = "definition-node-card definition-node-card-measure";
+    card.style.width = `${width}px`;
+
+    card.innerHTML = `
+        <div class="definition-node-top-glow"></div>
+        <div class="definition-node-accent"></div>
+        <div class="definition-node-badge">DEF</div>
+        <div class="definition-node-content">
+            <div class="definition-node-text">${markup}</div>
+        </div>
+    `;
+
+    measureRoot.appendChild(card);
+    const height = Math.ceil(card.getBoundingClientRect().height);
+    measureRoot.removeChild(card);
+
+    return Math.max(112, height);
+}
+
+function prepareNodes(rawNodes, mentionsMap) {
+    return rawNodes.map(node => {
+        const style = getNodeStyle(node);
+        const kind = getNodeKind(node);
+        const palette = getNodePalette(kind);
+
+        if (node.type === "definition") {
+            const markup = buildDefinitionMarkup(node.label, mentionsMap.get(node.id) || []);
+            const height = measureDefinitionHeight(markup, style.width);
+
+            return {
+                ...node,
+                kind,
+                palette,
+                width: style.width,
+                height,
+                markup,
+            };
+        }
+
+        const lines = wrapLabel(node.label, style.maxLen);
+        const height = Math.max(96, lines.length * style.lineHeight + style.paddingY);
+
+        return {
+            ...node,
+            kind,
+            palette,
+            width: style.width,
+            height,
+            lines,
+            lineHeight: style.lineHeight,
+        };
+    });
+}
+
+function indexNodesById(list) {
+    const map = new Map();
+    list.forEach(node => map.set(node.id, node));
+    return map;
+}
+
+function sortNodesByLabel(list) {
+    return [...list].sort((a, b) => String(a.label).localeCompare(String(b.label), "ru"));
+}
+
+function buildVerticalCenters(nodes, top = 170, gap = 72) {
+    const centers = [];
+    let cursorTop = top;
+
+    nodes.forEach(node => {
+        const centerY = cursorTop + node.height / 2;
+        centers.push(centerY);
+        cursorTop += node.height + gap;
+    });
+
+    return centers;
+}
+
+function buildDocumentModeLayout(preparedNodes, nodeById) {
+    const documentNodes = preparedNodes.filter(node => node.type === "document");
+    const termNodes = sortNodesByLabel(preparedNodes.filter(node => node.type === "term"));
+
+    const positions = {};
+    const laneX = {
+        document: 290,
+        term: 790,
+        definition: 1490,
+    };
+
+    const termToDefinition = new Map();
+    edges
+        .filter(edge => edge.label === "имеет определение")
+        .forEach(edge => termToDefinition.set(edge.source, edge.target));
+
+    const rows = termNodes.map(termNode => {
+        const defId = termToDefinition.get(termNode.id);
+        const defNode = defId ? nodeById.get(defId) : null;
+        return {
+            termNode,
+            defNode,
+            height: Math.max(termNode.height, defNode ? defNode.height : 0),
+        };
+    });
+
+    let cursorTop = 170;
+    const rowGap = 72;
+
+    rows.forEach(row => {
+        const centerY = cursorTop + row.height / 2;
+
+        positions[row.termNode.id] = {
+            x: laneX.term,
+            y: centerY,
+            width: row.termNode.width,
+            height: row.termNode.height,
+        };
+
+        if (row.defNode) {
+            positions[row.defNode.id] = {
+                x: laneX.definition,
+                y: centerY,
+                width: row.defNode.width,
+                height: row.defNode.height,
+            };
+        }
+
+        cursorTop += row.height + rowGap;
+    });
+
+    const documentToTerms = new Map();
+    edges
+        .filter(edge => edge.label === "содержит термин")
+        .forEach(edge => {
+            if (!documentToTerms.has(edge.source)) {
+                documentToTerms.set(edge.source, []);
+            }
+            documentToTerms.get(edge.source).push(edge.target);
+        });
+
+    const docCenters = buildVerticalCenters(documentNodes, 190, 58);
+
+    documentNodes.forEach((docNode, index) => {
+        const linkedTerms = documentToTerms.get(docNode.id) || [];
+        const linkedTermYs = linkedTerms
+            .map(termId => positions[termId]?.y)
+            .filter(value => typeof value === "number");
+
+        const centerY = linkedTermYs.length
+            ? linkedTermYs.reduce((sum, value) => sum + value, 0) / linkedTermYs.length
+            : docCenters[index];
+
+        positions[docNode.id] = {
+            x: laneX.document,
+            y: centerY,
+            width: docNode.width,
+            height: docNode.height,
+        };
+    });
+
+    return {
+        positions,
+        laneHeaders: [
+            { x: laneX.document, label: "Документы" },
+            { x: laneX.term, label: "Термины" },
+            { x: laneX.definition, label: "Определения" },
+        ],
+    };
+}
+
+function buildTermModeLayout(preparedNodes) {
+    const documentNodes = sortNodesByLabel(preparedNodes.filter(node => node.type === "document"));
+    const mainTermNode = preparedNodes.find(node => node.type === "term");
+    const definitionNodes = preparedNodes.filter(node => node.type === "definition");
+
+    const positions = {};
+    const laneX = {
+        document: 290,
+        term: 880,
+        definition: 1490,
+    };
+
+    const docCenters = buildVerticalCenters(documentNodes, 190, 58);
+    documentNodes.forEach((docNode, index) => {
+        positions[docNode.id] = {
+            x: laneX.document,
+            y: docCenters[index],
+            width: docNode.width,
+            height: docNode.height,
+        };
+    });
+
+    const defCenters = buildVerticalCenters(definitionNodes, 170, 72);
+    definitionNodes.forEach((defNode, index) => {
+        positions[defNode.id] = {
+            x: laneX.definition,
+            y: defCenters[index],
+            width: defNode.width,
+            height: defNode.height,
+        };
+    });
+
+    if (mainTermNode) {
+        const usedYs = [...docCenters, ...defCenters];
+        const minY = usedYs.length ? Math.min(...usedYs) : 240;
+        const maxY = usedYs.length ? Math.max(...usedYs) : 240;
+        const centerY = (minY + maxY) / 2;
+
+        positions[mainTermNode.id] = {
+            x: laneX.term,
+            y: centerY,
+            width: mainTermNode.width,
+            height: mainTermNode.height,
+        };
+    }
+
+    return {
+        positions,
+        laneHeaders: [
+            { x: laneX.document, label: "Документы" },
+            { x: laneX.term, label: "Выбранный термин" },
+            { x: laneX.definition, label: "Определения" },
+        ],
+    };
+}
+
+function computeCanvasSize(positions) {
+    let maxX = 0;
+    let maxY = 0;
+
+    Object.values(positions).forEach(pos => {
+        maxX = Math.max(maxX, pos.x + pos.width / 2 + 220);
+        maxY = Math.max(maxY, pos.y + pos.height / 2 + 220);
+    });
+
+    return {
+        width: Math.max(2200, maxX),
+        height: Math.max(1100, maxY),
+    };
+}
+
+function drawLaneGuides(laneHeaders, canvasHeight) {
+    laneHeaders.forEach(item => {
+        const guide = createSvgElement("line", {
+            x1: item.x,
+            y1: 120,
+            x2: item.x,
+            y2: canvasHeight - 80,
+            stroke: "rgba(148, 163, 184, 0.18)",
+            "stroke-width": "1",
+            "stroke-dasharray": "6 10"
+        });
+        svg.appendChild(guide);
+
+        const label = createSvgElement("text", {
+            x: item.x,
+            y: 84,
+            "text-anchor": "middle",
+            fill: "#7d8aa5",
+            "font-size": "13",
+            "font-weight": "800",
+            "letter-spacing": "0.18em"
+        });
+        label.textContent = item.label.toUpperCase();
+        svg.appendChild(label);
+    });
+}
+
+function getEdgeColor(edge) {
+    if (edge.label === "содержит термин") return "#6b7d9f";
+    if (edge.label === "имеет определение") return "#8f79ff";
+    return "#7d8aa5";
+}
+
+function drawPath(sourcePos, targetPos, edgeColor) {
+    const startX = sourcePos.x + sourcePos.width / 2;
+    const startY = sourcePos.y;
+    const endX = targetPos.x - targetPos.width / 2;
+    const endY = targetPos.y;
+    const midX = startX + (endX - startX) / 2;
+
+    const d = [
+        `M ${startX} ${startY}`,
+        `L ${midX} ${startY}`,
+        `L ${midX} ${endY}`,
+        `L ${endX} ${endY}`
+    ].join(" ");
+
+    const path = createSvgElement("path", {
+        d,
+        fill: "none",
+        stroke: edgeColor,
+        "stroke-width": "2.7",
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+        opacity: "0.62"
+    });
+
+    svg.appendChild(path);
+}
+
+function drawRegularNode(node, pos) {
+    const group = createSvgElement("g");
+
+    const shadow = createSvgElement("rect", {
+        x: pos.x - pos.width / 2,
+        y: pos.y - pos.height / 2,
+        width: pos.width,
+        height: pos.height,
+        rx: 26,
+        ry: 26,
+        fill: node.palette.fill,
+        stroke: node.palette.stroke,
+        "stroke-width": "1.2",
+        filter: "url(#nodeShadow)"
+    });
+    group.appendChild(shadow);
+
+    const topGlow = createSvgElement("rect", {
+        x: pos.x - pos.width / 2 + 1.5,
+        y: pos.y - pos.height / 2 + 1.5,
+        width: pos.width - 3,
+        height: Math.max(30, pos.height * 0.28),
+        rx: 24,
+        ry: 24,
+        fill: "rgba(255,255,255,0.04)"
+    });
+    group.appendChild(topGlow);
+
+    const accent = createSvgElement("rect", {
+        x: pos.x - pos.width / 2 + 16,
+        y: pos.y - pos.height / 2 + 14,
+        width: pos.width - 32,
+        height: 3.5,
+        rx: 999,
+        ry: 999,
+        fill: node.palette.accent
+    });
+    group.appendChild(accent);
+
+    const badgeWidth = node.palette.label.length * 9 + 20;
+    const badge = createSvgElement("rect", {
+        x: pos.x - pos.width / 2 + 18,
+        y: pos.y - pos.height / 2 + 24,
+        width: badgeWidth,
+        height: 24,
+        rx: 999,
+        ry: 999,
+        fill: node.palette.badgeFill,
+        stroke: "rgba(255,255,255,0.05)",
+        "stroke-width": "1"
+    });
+    group.appendChild(badge);
+
+    const badgeText = createSvgElement("text", {
+        x: pos.x - pos.width / 2 + 18 + badgeWidth / 2,
+        y: pos.y - pos.height / 2 + 36,
+        "text-anchor": "middle",
+        "dominant-baseline": "middle",
+        fill: node.palette.badgeText,
+        "font-size": "11",
+        "font-weight": "800",
+        "letter-spacing": "0.12em"
+    });
+    badgeText.textContent = node.palette.label;
+    group.appendChild(badgeText);
+
+    const startY = pos.y - ((node.lines.length - 1) * node.lineHeight) / 2 + 14;
+
+    node.lines.forEach((lineText, index) => {
+        const text = createSvgElement("text", {
+            x: pos.x,
+            y: startY + index * node.lineHeight,
+            "text-anchor": "middle",
+            "dominant-baseline": "middle",
+            fill: node.palette.text,
+            "font-size": "14.5",
+            "font-weight": "700"
+        });
+        text.textContent = lineText;
+        group.appendChild(text);
+    });
+
+    svg.appendChild(group);
+}
+
+function drawDefinitionNode(node, pos) {
+    const foreignObject = createSvgElement("foreignObject", {
+        x: pos.x - pos.width / 2,
+        y: pos.y - pos.height / 2,
+        width: pos.width,
+        height: pos.height,
+        class: "definition-node-wrap"
+    });
+
+    const wrapper = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
+    wrapper.style.width = "100%";
+    wrapper.style.height = "100%";
+    wrapper.style.overflow = "visible";
+
+    const card = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
+    card.className = "definition-node-card";
+
+    card.innerHTML = `
+        <div class="definition-node-top-glow"></div>
+        <div class="definition-node-accent"></div>
+        <div class="definition-node-badge">DEF</div>
+        <div class="definition-node-content">
+            <div class="definition-node-text">${node.markup}</div>
+        </div>
+    `;
+
+    wrapper.appendChild(card);
+    foreignObject.appendChild(wrapper);
+    svg.appendChild(foreignObject);
+}
+
+function buildTooltipMarkup(termLabel, termDefinitionMap) {
+    const key = String(termLabel || "").toLowerCase();
+    const item = termDefinitionMap[key];
+
+    if (!item || !item.definitions || item.definitions.length === 0) {
+        return `
+            <div class="map-term-tooltip-title">${escapeHtml(termLabel)}</div>
+            <div class="map-term-tooltip-body">Определение термина недоступно в текущем режиме карты.</div>
+        `;
+    }
+
+    const defs = item.definitions.slice(0, 2).map(def => escapeHtml(def));
+    const body = defs.join("<br><br>");
+
+    return `
+        <div class="map-term-tooltip-title">${escapeHtml(item.label)}</div>
+        <div class="map-term-tooltip-body">${body}</div>
+    `;
+}
+
+function positionTooltip(event) {
+    const offset = 18;
+    const tooltipRect = tooltipEl.getBoundingClientRect();
+    let left = event.clientX + offset;
+    let top = event.clientY + offset;
+
+    if (left + tooltipRect.width > window.innerWidth - 12) {
+        left = event.clientX - tooltipRect.width - offset;
+    }
+
+    if (top + tooltipRect.height > window.innerHeight - 12) {
+        top = event.clientY - tooltipRect.height - offset;
+    }
+
+    tooltipEl.style.left = `${Math.max(12, left)}px`;
+    tooltipEl.style.top = `${Math.max(12, top)}px`;
+}
+
+function hideTooltip() {
+    tooltipEl.classList.remove("is-visible");
+    tooltipEl.innerHTML = "";
+}
+
+function bindDefinitionTooltips(termDefinitionMap) {
+    const links = mapShellWrap.querySelectorAll(".definition-term-link");
+
+    links.forEach(link => {
+        link.addEventListener("mouseenter", event => {
+            const termLabel = event.currentTarget.getAttribute("data-term-label") || "";
+            tooltipEl.innerHTML = buildTooltipMarkup(termLabel, termDefinitionMap);
+            tooltipEl.classList.add("is-visible");
+            positionTooltip(event);
+        });
+
+        link.addEventListener("mousemove", event => {
+            if (tooltipEl.classList.contains("is-visible")) {
+                positionTooltip(event);
+            }
+        });
+
+        link.addEventListener("mouseleave", hideTooltip);
+    });
+}
+
+function createDefs() {
+    const defs = createSvgElement("defs");
+
+    const filter = createSvgElement("filter", {
+        id: "nodeShadow",
+        x: "-30%",
+        y: "-30%",
+        width: "180%",
+        height: "180%"
+    });
+
+    filter.appendChild(createSvgElement("feDropShadow", {
+        dx: "0",
+        dy: "14",
+        stdDeviation: "16",
+        "flood-color": "#020617",
+        "flood-opacity": "0.35"
+    }));
+
+    defs.appendChild(filter);
+    svg.appendChild(defs);
+}
+
+function renderMap() {
+    svg.innerHTML = "";
+    createDefs();
+    hideTooltip();
+
+    const mentionsMap = buildDefinitionMentionsMap(nodes, edges);
+    const preparedNodesAll = prepareNodes(nodes, mentionsMap);
+    const preparedNodes = preparedNodesAll.filter(node => node.type !== "related_term");
+    const nodeById = indexNodesById(preparedNodes);
+    const termDefinitionMap = buildTermDefinitionsMap(preparedNodesAll, edges);
+
+    const layout = mode === "document"
+        ? buildDocumentModeLayout(preparedNodes, nodeById)
+        : buildTermModeLayout(preparedNodes);
+
+    const positions = layout.positions;
+    const laneHeaders = layout.laneHeaders;
+    const canvasSize = computeCanvasSize(positions);
+
+    svg.setAttribute("viewBox", `0 0 ${canvasSize.width} ${canvasSize.height}`);
+    svg.setAttribute("width", canvasSize.width);
+    svg.setAttribute("height", canvasSize.height);
+
+    drawLaneGuides(laneHeaders, canvasSize.height);
+
+    edges.forEach(edge => {
+        if (edge.label === "упоминает термин") return;
+
+        const sourceNode = nodeById.get(edge.source);
+        const targetNode = nodeById.get(edge.target);
+        const sourcePos = positions[edge.source];
+        const targetPos = positions[edge.target];
+
+        if (!sourceNode || !targetNode || !sourcePos || !targetPos) return;
+
+        drawPath(sourcePos, targetPos, getEdgeColor(edge));
+    });
+
+    preparedNodes.forEach(node => {
+        const pos = positions[node.id];
+        if (!pos) return;
+
+        if (node.type === "definition") {
+            drawDefinitionNode(node, pos);
+        } else {
+            drawRegularNode(node, pos);
+        }
+    });
+
+    bindDefinitionTooltips(termDefinitionMap);
+}
+
+function applyScale() {
+    mapSurface.style.transform = `scale(${currentScale})`;
+}
+
+function zoomIn() {
+    currentScale = Math.min(1.85, currentScale + 0.1);
+    applyScale();
+}
+
+function zoomOut() {
+    currentScale = Math.max(0.55, currentScale - 0.1);
+    applyScale();
+}
+
+function zoomReset() {
+    currentScale = 1;
+    applyScale();
+}
+
+function setInitialScroll() {
+    mapShell.scrollLeft = 120;
+    mapShell.scrollTop = 0;
+}
+
+document.querySelectorAll(".map-zoom-btn").forEach(button => {
+    button.addEventListener("click", () => {
+        const action = button.dataset.action;
+        if (action === "zoom-in") zoomIn();
+        if (action === "zoom-out") zoomOut();
+        if (action === "zoom-reset") zoomReset();
+    });
+});
+
+mapShell.addEventListener("mousedown", event => {
+    isDragging = true;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    scrollStartLeft = mapShell.scrollLeft;
+    scrollStartTop = mapShell.scrollTop;
+    mapShell.classList.add("dragging");
+    hideTooltip();
+});
+
+window.addEventListener("mouseup", () => {
+    isDragging = false;
+    mapShell.classList.remove("dragging");
+});
+
+mapShell.addEventListener("mouseleave", () => {
+    if (isDragging) {
+        isDragging = false;
+        mapShell.classList.remove("dragging");
+    }
+});
+
+window.addEventListener("mousemove", event => {
+    if (!isDragging) return;
+
+    const dx = event.clientX - dragStartX;
+    const dy = event.clientY - dragStartY;
+
+    mapShell.scrollLeft = scrollStartLeft - dx;
+    mapShell.scrollTop = scrollStartTop - dy;
+});
+
+mapShell.addEventListener("wheel", event => {
+    event.preventDefault();
+    hideTooltip();
+
+    if (event.deltaY < 0) {
+        zoomIn();
+    } else {
+        zoomOut();
+    }
+}, { passive: false });
+
+window.addEventListener("scroll", hideTooltip, { passive: true });
+window.addEventListener("resize", hideTooltip);
+
+initAutocompletes();
+
+if (nodes.length > 0) {
+    renderMap();
+    applyScale();
+    requestAnimationFrame(setInitialScroll);
+}
+</script>
     {% else %}
         <section class="section-card glass-panel">
             <div class="empty-state">
