@@ -23,33 +23,7 @@
         </div>
     </section>
 
-    <section class="stats-grid">
-        <article class="stat-card glass-panel">
-            <div class="stat-value">{{ documents|length }}</div>
-            <div class="stat-label">Всего документов</div>
-        </article>
-
-        <article class="stat-card glass-panel">
-            <div class="stat-value">
-                {% if documents %}
-                    {{ documents[0].created_at }}
-                {% else %}
-                    —
-                {% endif %}
-            </div>
-            <div class="stat-label">Последняя запись</div>
-        </article>
-
-        <article class="stat-card glass-panel">
-            <div class="stat-value">PDF</div>
-            <div class="stat-label">Поддерживаемый формат</div>
-        </article>
-
-        <article class="stat-card glass-panel">
-            <div class="stat-value">DOCX</div>
-            <div class="stat-label">Поддерживаемый формат</div>
-        </article>
-    </section>
+        
 
     <section class="section-card glass-panel">
         <div class="section-head">

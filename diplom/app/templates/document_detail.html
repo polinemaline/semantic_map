@@ -24,7 +24,7 @@
             <div class="meta-row">
                 <span class="info-pill">Файл: {{ document.original_filename }}</span>
                 <span class="info-pill">Формат: {{ document.file_type|upper }}</span>
-                <span class="info-pill">Найдено пар: {{ document.extracted_pairs_count }}</span>
+                <span class="info-pill">Найдено терминов: {{ document.extracted_pairs_count }}</span>
             </div>
         </div>
     </section>
@@ -32,7 +32,7 @@
     <section class="stats-grid">
         <article class="stat-card glass-panel">
             <div class="stat-value">{{ document.extracted_pairs_count }}</div>
-            <div class="stat-label">Найдено пар</div>
+            <div class="stat-label">Найдено терминов</div>
         </article>
 
         <article class="stat-card glass-panel">

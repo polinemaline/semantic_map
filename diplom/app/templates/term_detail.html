@@ -39,7 +39,7 @@
 
 .term-definition-text-body {
     font-size: 15px;
-    color: rgba(235, 242, 255, 0.82);
+    color: rgba(0, 0, 0, 0.82);
     line-height: 1.75;
 }
 
@@ -69,14 +69,7 @@
 
             <div class="meta-row">
                 <span class="info-pill">Документов: {{ term.documents_count }}</span>
-                <span class="info-pill">Разных определений: {{ term.definitions_count }}</span>
-                {% if has_conflict %}
-                    <span class="info-pill" style="background: rgba(251, 113, 133, 0.14); color: #ffd0d8;">
-                        Есть расхождения
-                    </span>
-                {% else %}
-                    <span class="info-pill">Определения согласованы</span>
-                {% endif %}
+               
             </div>
         </div>
     </section>
