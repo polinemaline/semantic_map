@@ -5,24 +5,17 @@
 {% block content %}
 <section class="page-intro glass-panel">
     <div>
-       
         <h1>Сравнение определений</h1>
-       
     </div>
 </section>
-
 
 <section class="section-card glass-panel">
     <div class="section-head">
         <div>
-            
             <h2>Термины с разными определениями</h2>
         </div>
 
-        <div class="page-actions">
-            <span class="info-pill">Найдено: {{ conflicts|length }}</span>
-            <a class="button button-secondary" href="{{ url_for('main.report') }}">К отчету</a>
-        </div>
+        <span class="info-pill">Найдено: {{ conflicts|length }}</span>
     </div>
 
     {% if conflicts %}
@@ -36,6 +29,7 @@
                         <th>Действия</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     {% for term in conflicts %}
                         <tr>
@@ -46,7 +40,7 @@
                                 <span class="status-pill">{{ term.documents_count }}</span>
                             </td>
                             <td>
-                                <span class="status-pill" style="background: rgba(251, 113, 133, 0.14); color: #ffd0d8;">
+                                <span class="status-pill" style="background: rgba(223, 69, 101, 0.12); color: #b82d4a;">
                                     {{ term.unique_definitions_count }}
                                 </span>
                             </td>
@@ -69,8 +63,7 @@
         <div class="empty-state">
             <h3>Конфликтов пока нет</h3>
             <p>
-                Сейчас система не обнаружила терминов, у которых есть несколько различных определений
-                в разных документах.
+                Сейчас система не обнаружила терминов, у которых есть несколько различных определений в разных документах.
             </p>
         </div>
     {% endif %}

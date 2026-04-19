@@ -4,19 +4,56 @@
 
 {% block content %}
 <style>
-.document-detail-page-stack {
+.document-detail-stack {
     display: grid;
     gap: 22px;
 }
 
-.document-detail-page-stack > .page-intro,
-.document-detail-page-stack > .stats-grid,
-.document-detail-page-stack > .section-card {
+.document-detail-stack > .page-intro,
+.document-detail-stack > .section-card {
     margin-bottom: 0;
+}
+
+.definition-list {
+    display: grid;
+    gap: 14px;
+}
+
+.definition-card {
+    padding: 18px;
+    border-radius: 22px;
+}
+
+.definition-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.definition-card h3 {
+    margin: 0;
+    color: #152033;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+}
+
+.definition-card p {
+    margin: 0;
+    color: rgba(21, 32, 51, 0.74);
+    line-height: 1.7;
+}
+
+.definition-source {
+    margin-top: 12px;
+    color: rgba(21, 32, 51, 0.50);
+    font-size: 13px;
+    line-height: 1.5;
 }
 </style>
 
-<div class="document-detail-page-stack">
+<div class="document-detail-stack">
     <section class="page-intro glass-panel">
         <div>
             <h1>{{ document.title }}</h1>
@@ -49,7 +86,18 @@
 
             <div class="page-actions">
                 <a class="button button-secondary" href="{{ url_for('main.documents') }}">Назад к списку</a>
-                <a class="button" href="{{ url_for('main.semantic_map', document_id=document.id) }}">Семантическая карта</a>
+
+                <a class="button button-secondary" href="{{ url_for('main.document_source', document_id=document.id) }}">
+                    Открыть исходный файл
+                </a>
+
+                <a class="button" href="{{ url_for('main.document_report_docx', document_id=document.id) }}">
+                    Сформировать отчет
+                </a>
+
+                <a class="button" href="{{ url_for('main.semantic_map', document_id=document.id) }}">
+                    Семантическая карта
+                </a>
 
                 <form
                     method="post"
@@ -57,7 +105,9 @@
                     onsubmit="return confirm('Удалить документ {{ document.title }}?');"
                     class="inline-form"
                 >
-                    <button type="submit" class="button button-danger">Удалить документ</button>
+                    <button type="submit" class="text-link text-link-danger text-link-button">
+                        Удалить документ
+                    </button>
                 </form>
             </div>
         </div>
@@ -68,38 +118,37 @@
             <div>
                 <h2>Извлеченные термины и определения</h2>
             </div>
+
+            <span class="info-pill">Всего: {{ occurrences|length }}</span>
         </div>
 
         {% if occurrences %}
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Термин</th>
-                            <th>Определение</th>
-                            <th>Переход</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in occurrences %}
-                            <tr>
-                                <td>
-                                    <div class="table-title">{{ row.term_name }}</div>
-                                </td>
-                                <td>{{ row.definition_text }}</td>
-                                <td>
-                                    <a class="text-link" href="{{ url_for('main.term_detail', term_id=row.term_id) }}">
-                                        Карточка термина
-                                    </a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="definition-list">
+                {% for row in occurrences %}
+                    <article class="definition-card glass-panel">
+                        <div class="definition-card-head">
+                            <h3>{{ row.term_name }}</h3>
+                            <a class="text-link" href="{{ url_for('main.term_detail', term_id=row.term_id) }}">
+                                Карточка термина
+                            </a>
+                        </div>
+
+                        <p>{{ row.definition_text }}</p>
+
+                        {% if row.source_line %}
+                            <div class="definition-source">
+                                Исходная строка: {{ row.source_line }}
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
             </div>
         {% else %}
             <div class="empty-state">
                 <h3>Пары не найдены</h3>
+                <p>
+                    В этом документе пока нет извлеченных терминов и определений.
+                </p>
             </div>
         {% endif %}
     </section>
@@ -114,34 +163,34 @@
         <div class="action-grid">
             <a class="action-card" href="{{ url_for('main.semantic_map', document_id=document.id) }}">
                 <span class="action-card-icon action-icon-blue">◉</span>
-                <div class="action-card-body">
+                <span class="action-card-body">
                     <h3>Построить карту</h3>
-                    <p>Открыть визуализацию только по этому документу.</p>
-                </div>
+                    <p>Открыть визуализацию терминов и определений только по этому документу.</p>
+                </span>
             </a>
 
-            <a class="action-card" href="{{ url_for('main.report') }}">
-                <span class="action-card-icon action-icon-indigo">≣</span>
-                <div class="action-card-body">
-                    <h3>Перейти к отчету</h3>
-                    <p>Сравнить этот документ с остальными в общей аналитике.</p>
-                </div>
+            <a class="action-card" href="{{ url_for('main.document_report_docx', document_id=document.id) }}">
+                <span class="action-card-icon action-icon-green">≣</span>
+                <span class="action-card-body">
+                    <h3>Сформировать отчет</h3>
+                    <p>Скачать DOCX с определениями, конфликтами и семантической картой.</p>
+                </span>
+            </a>
+
+            <a class="action-card" href="{{ url_for('main.document_source', document_id=document.id) }}">
+                <span class="action-card-icon action-icon-indigo">↗</span>
+                <span class="action-card-body">
+                    <h3>Открыть исходный файл</h3>
+                    <p>Посмотреть загруженный документ или его текстовую версию на сайте.</p>
+                </span>
             </a>
 
             <a class="action-card" href="{{ url_for('main.compare') }}">
                 <span class="action-card-icon action-icon-rose">!</span>
-                <div class="action-card-body">
+                <span class="action-card-body">
                     <h3>Открыть сравнение</h3>
                     <p>Посмотреть конфликтующие термины между документами.</p>
-                </div>
-            </a>
-
-            <a class="action-card" href="{{ url_for('main.documents') }}">
-                <span class="action-card-icon action-icon-green">←</span>
-                <div class="action-card-body">
-                    <h3>Вернуться в реестр</h3>
-                    <p>Открыть общий список документов и выбрать другой источник.</p>
-                </div>
+                </span>
             </a>
         </div>
     </section>

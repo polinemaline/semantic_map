@@ -1,23 +1,24 @@
-<!DOCTYPE html>
+{% set navigation = [
+    ('main.index', 'Главная'),
+    ('main.upload', 'Загрузка'),
+    ('main.documents', 'Документы'),
+    ('main.terms', 'Термины'),
+    ('main.compare', 'Сравнение'),
+    ('main.semantic_map', 'Семантическая карта')
+] %}
+
+{% set auth_page = request.endpoint in ['main.login', 'main.register'] %}
+
+<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Semantic Map{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
-    {% set navigation = [
-        ('main.index', 'Главная'),
-        ('main.upload', 'Загрузка'),
-        ('main.documents', 'Документы'),
-        ('main.terms', 'Термины'),
-        ('main.compare', 'Сравнение'),
-        ('main.report', 'Отчет'),
-        ('main.semantic_map', 'Семантическая карта')
-    ] %}
-    {% set auth_page = request.endpoint in ['main.login', 'main.register'] %}
 
+<body>
     <div class="app-bg">
         <div class="app-bg-orb app-bg-orb-1"></div>
         <div class="app-bg-orb app-bg-orb-2"></div>
@@ -27,47 +28,58 @@
     </div>
 
     {% if not auth_page %}
-    <header class="site-header">
-        <div class="container">
-            <div class="site-header-shell site-header-main">
-                <div class="user-badge">
-                    <div class="user-avatar">
-                        <span>{{ g.current_user["email"][0]|upper }}</span>
+        <header class="site-header">
+            <div class="container">
+                <div class="site-header-shell site-header-main">
+                    <a class="user-badge" href="{{ url_for('main.index') }}">
+                        <span class="user-avatar">
+                            {{ g.current_user["email"][0]|upper }}
+                        </span>
+                        <span class="user-badge-copy">
+                            <span class="user-badge-name">{{ g.current_user["email"] }}</span>
+                        </span>
+                    </a>
+
+                    <nav class="nav">
+                        {% for endpoint, label in navigation %}
+                            <a
+                                class="nav-link
+                                    {% if request.endpoint == endpoint %}
+                                        is-active
+                                    {% endif %}
+                                    {% if endpoint == 'main.documents' and request.endpoint in ['main.document_detail', 'main.document_source'] %}
+                                        is-active
+                                    {% endif %}
+                                    {% if endpoint == 'main.terms' and request.endpoint in ['main.term_detail'] %}
+                                        is-active
+                                    {% endif %}
+                                "
+                                href="{{ url_for(endpoint) }}"
+                            >
+                                {{ label }}
+                            </a>
+                        {% endfor %}
+                    </nav>
+
+                    <div class="header-actions">
+                        <form method="post" action="{{ url_for('main.logout') }}" class="inline-form">
+                            <button class="button button-secondary" type="submit">Выйти</button>
+                        </form>
                     </div>
-
-                    <div class="user-badge-copy">
-                        <div class="user-badge-name">{{ g.current_user["email"] }}</div>
-                    </div>
-                </div>
-
-                <nav class="nav" aria-label="Основная навигация">
-                    {% for endpoint, label in navigation %}
-                        <a
-                            class="nav-link {% if request.endpoint == endpoint %}is-active{% endif %}"
-                            href="{{ url_for(endpoint) }}"
-                        >
-                            {{ label }}
-                        </a>
-                    {% endfor %}
-                </nav>
-
-                <div class="header-actions">
-                    <form method="post" action="{{ url_for('main.logout') }}">
-                        <button type="submit" class="button button-secondary">Выйти</button>
-                    </form>
                 </div>
             </div>
-        </div>
-    </header>
+        </header>
     {% endif %}
 
-    <main class="app-main {% if auth_page %}app-main-auth{% endif %}">
-        <div class="container {% if auth_page %}auth-container{% endif %}">
+    <main class="{% if auth_page %}app-main app-main-auth{% else %}app-main{% endif %}">
+        <div class="{% if auth_page %}container auth-container{% else %}container{% endif %}">
             {% with messages = get_flashed_messages(with_categories=True) %}
                 {% if messages %}
                     <div class="flash-stack">
                         {% for category, message in messages %}
-                            <div class="flash flash-{{ category }}">{{ message }}</div>
+                            <div class="flash flash-{{ category }}">
+                                {{ message }}
+                            </div>
                         {% endfor %}
                     </div>
                 {% endif %}
