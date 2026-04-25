@@ -44,11 +44,7 @@ body {
     min-height: 100vh;
     font-family: Inter, "Segoe UI", Arial, sans-serif;
     color: var(--text);
-    background:
-        radial-gradient(circle at 12% 10%, rgba(76, 128, 255, 0.20), transparent 22%),
-        radial-gradient(circle at 88% 14%, rgba(42, 189, 172, 0.16), transparent 26%),
-        radial-gradient(circle at 50% 100%, rgba(128, 87, 216, 0.10), transparent 28%),
-        linear-gradient(180deg, #f7faff 0%, #eef4fb 46%, #e7eff9 100%);
+    background: #f7faff;
     position: relative;
     overflow-x: hidden;
 }
@@ -274,12 +270,8 @@ img {
 .section-card::before,
 .page-intro::before,
 .hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(135deg, rgba(255,255,255,0.70), transparent 36%);
-}
+    content: none;
+    }
 
 .hero {
     padding: 34px;

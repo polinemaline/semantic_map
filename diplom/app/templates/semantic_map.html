@@ -176,11 +176,6 @@
     cursor: grabbing;
 }
 
-.map-stage-grid,
-.map-stage-noise,
-.map-stage-vignette {
-    display: none;
-}
 .map-surface {
     position: relative;
     z-index: 1;
@@ -473,16 +468,7 @@
             </div>
         </section>
 
-        <aside class="glass-panel map-panel">
-            <span class="panel-label">Навигация</span>
-            <ul class="map-helper-list">
-                <li>Начни печатать в поле документа или термина, чтобы увидеть подходящие варианты.</li>
-                <li>Зажми левую кнопку мыши и перетаскивай карту.</li>
-                <li>Колесико мыши приближает и отдаляет карту относительно курсора.</li>
-                <li>Двойной клик по карте сбрасывает масштаб.</li>
-                <li>Пунктирная линия показывает, что термин встречается внутри определения другого термина.</li>
-            </ul>
-        </aside>
+        
     </div>
 
     {% if has_map %}
@@ -517,8 +503,7 @@
 
             <div class="map-shell-wrap" id="map-shell-wrap">
                 <div class="map-floating map-hint">
-                    <span class="map-hint-dot"></span>
-                    перетащи карту · колесико = масштаб · двойной клик = сброс
+                    
                 </div>
 
                 <div id="map-shell" class="map-stage">
@@ -587,6 +572,10 @@ function escapeHtml(value) {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+}
+
+function edgeKey(edge) {
+    return `${edge.source}__${edge.target}__${edge.label}`;
 }
 
 function initAutocomplete(root, items) {
@@ -1273,7 +1262,7 @@ function computeCanvasSize(positions) {
     let maxY = 0;
 
     Object.values(positions).forEach(pos => {
-        maxX = Math.max(maxX, pos.x + pos.width / 2 + 220);
+        maxX = Math.max(maxX, pos.x + pos.width / 2 + 260);
         maxY = Math.max(maxY, pos.y + pos.height / 2 + 220);
     });
 
@@ -1300,11 +1289,36 @@ function drawLaneGuides(svg, laneHeaders, canvasHeight) {
 }
 
 function getEdgeColor(edge) {
-    if (edge.label === "содержит термин") return "#8a9bb7";
-    if (edge.label === "имеет определение") return "#8057d8";
-    if (edge.label === "упоминает термин") return "#000000";
+    if (
+        edge.label === "содержит термин" ||
+        edge.label === "имеет определение"
+    ) {
+        return "#000000";
+    }
 
-    return "#8a9bb7";
+    return getDashedEdgeColor(edge);
+}
+
+function getDashedEdgeColor(edge) {
+    const palette = [
+        "#7c3aed", // фиолетовый
+        "#2563eb", // синий
+        "#059669", // зелёный
+        "#d97706", // оранжевый
+        "#dc2626", // красный
+        "#0891b2", // голубой
+        "#9333ea", // сиреневый
+        "#65a30d"  // салатовый
+    ];
+
+    const key = `${edge.source}|${edge.target}|${edge.label}`;
+    let hash = 0;
+
+    for (let i = 0; i < key.length; i += 1) {
+        hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    }
+
+    return palette[hash % palette.length];
 }
 
 function getConnectionPoints(sourcePos, targetPos) {
@@ -1327,7 +1341,35 @@ function getConnectionPoints(sourcePos, targetPos) {
     };
 }
 
-function drawPath(svg, sourcePos, targetPos, edgeColor, dashed = false) {
+function buildDashedEdgeOffsets(dashedEdges, positions) {
+    const offsets = new Map();
+    const groupedByTarget = new Map();
+
+    dashedEdges.forEach(edge => {
+        if (!positions[edge.source] || !positions[edge.target]) return;
+
+        if (!groupedByTarget.has(edge.target)) {
+            groupedByTarget.set(edge.target, []);
+        }
+
+        groupedByTarget.get(edge.target).push(edge);
+    });
+
+    groupedByTarget.forEach(group => {
+        group.sort((a, b) => positions[a.source].y - positions[b.source].y);
+
+        const spacing = 30;
+        const startOffset = -((group.length - 1) * spacing) / 2;
+
+        group.forEach((edge, index) => {
+            offsets.set(edgeKey(edge), startOffset + index * spacing);
+        });
+    });
+
+    return offsets;
+}
+
+function drawStandardPath(svg, sourcePos, targetPos, edgeColor) {
     const points = getConnectionPoints(sourcePos, targetPos);
     const midX = points.startX + (points.endX - points.startX) / 2;
 
@@ -1342,15 +1384,44 @@ function drawPath(svg, sourcePos, targetPos, edgeColor, dashed = false) {
         d,
         fill: "none",
         stroke: edgeColor,
-        "stroke-width": dashed ? "2.3" : "2.7",
+        "stroke-width": "2.8",
         "stroke-linecap": "round",
         "stroke-linejoin": "round",
-        opacity: dashed ? "0.82" : "0.62"
+        opacity: "0.9"
     });
 
-    if (dashed) {
-        path.setAttribute("stroke-dasharray", "8 9");
+    svg.appendChild(path);
+}
+
+function drawDashedPath(svg, sourcePos, targetPos, edgeColor, channelOffset = 0) {
+    const points = getConnectionPoints(sourcePos, targetPos);
+    const anchorGap = 96;
+
+    let laneX;
+
+    if (points.direction === -1) {
+        laneX = targetPos.x + targetPos.width / 2 + anchorGap + channelOffset;
+    } else {
+        laneX = targetPos.x - targetPos.width / 2 - anchorGap + channelOffset;
     }
+
+    const d = [
+        `M ${points.startX} ${points.startY}`,
+        `L ${laneX} ${points.startY}`,
+        `L ${laneX} ${points.endY}`,
+        `L ${points.endX} ${points.endY}`
+    ].join(" ");
+
+    const path = createSvgElement("path", {
+        d,
+        fill: "none",
+        stroke: edgeColor,
+        "stroke-width": "2.4",
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+        "stroke-dasharray": "8 8",
+        opacity: "0.95"
+    });
 
     svg.appendChild(path);
 }
@@ -1472,7 +1543,7 @@ function positionTooltipNearElement(element) {
     const tooltipEl = document.getElementById("map-term-tooltip");
     if (!tooltipEl || !element) return;
 
-    const offset = 2;
+    const offset = 4;
     const elementRect = element.getBoundingClientRect();
     const tooltipRect = tooltipEl.getBoundingClientRect();
 
@@ -1511,7 +1582,7 @@ function bindDefinitionTooltips(termDefinitionMap) {
 
     const links = mapShellWrap.querySelectorAll(".definition-term-link");
 
-   links.forEach(link => {
+    links.forEach(link => {
         link.addEventListener("mouseenter", event => {
             const target = event.currentTarget;
             const termLabel = target.getAttribute("data-term-label") || "";
@@ -1582,8 +1653,7 @@ function drawSvgGrid(svg, canvasSize) {
         y: "0",
         width: canvasSize.width,
         height: canvasSize.height,
-        fill: "url(#mapGridPattern)",
-        opacity: "1"
+        fill: "url(#mapGridPattern)"
     });
 
     svg.appendChild(gridRect);
@@ -1624,9 +1694,20 @@ function renderMap() {
 
     drawSvgGrid(svg, canvasSize);
     drawLaneGuides(svg, laneHeaders, canvasSize.height);
-    edges.forEach(edge => {
-        if (edge.label === "упоминает термин") return;
 
+    const solidEdges = edges.filter(edge =>
+        edge.label === "содержит термин" ||
+        edge.label === "имеет определение"
+    );
+
+    const dashedEdges = edges.filter(edge =>
+        edge.label !== "содержит термин" &&
+        edge.label !== "имеет определение"
+    );
+
+    const dashedOffsets = buildDashedEdgeOffsets(dashedEdges, positions);
+
+    solidEdges.forEach(edge => {
         const sourceNode = nodeById.get(edge.source);
         const targetNode = nodeById.get(edge.target);
         const sourcePos = positions[edge.source];
@@ -1634,12 +1715,10 @@ function renderMap() {
 
         if (!sourceNode || !targetNode || !sourcePos || !targetPos) return;
 
-        drawPath(svg, sourcePos, targetPos, getEdgeColor(edge), false);
+        drawStandardPath(svg, sourcePos, targetPos, "#000000");
     });
 
-    edges.forEach(edge => {
-        if (edge.label !== "упоминает термин") return;
-
+    dashedEdges.forEach(edge => {
         const sourceNode = nodeById.get(edge.source);
         const targetNode = nodeById.get(edge.target);
         const sourcePos = positions[edge.source];
@@ -1647,7 +1726,13 @@ function renderMap() {
 
         if (!sourceNode || !targetNode || !sourcePos || !targetPos) return;
 
-        drawPath(svg, sourcePos, targetPos, getEdgeColor(edge), true);
+        drawDashedPath(
+            svg,
+            sourcePos,
+            targetPos,
+            getDashedEdgeColor(edge),
+            dashedOffsets.get(edgeKey(edge)) || 0
+        );
     });
 
     preparedNodes.forEach(node => {

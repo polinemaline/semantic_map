@@ -1,62 +1,179 @@
 {% extends "base.html" %}
-
 {% block title %}Загрузка документа — Semantic Map{% endblock %}
 
 {% block content %}
-<section class="page-intro glass-panel">
-    <div>
-        
-        <h1>Загрузка документа</h1>
-       
-    </div>
-</section>
 
-<section class="upload-layout">
-    <section class="glass-panel upload-main-card">
-        <div class="section-head">
-            <div>
-                
-                <h2>Добавить документ</h2>
-            </div>
+<style>
+.upload-page-stack {
+    display: grid;
+    gap: 22px;
+}
+
+.upload-page-stack > .page-intro,
+.upload-page-stack > .upload-layout {
+    margin-bottom: 0;
+}
+
+.file-shell {
+    position: relative;
+}
+
+.file-shell input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 3;
+}
+
+.file-shell-content {
+    pointer-events: none;
+}
+
+.file-shell-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    text-align: center;
+    padding-bottom: 2px;
+}
+
+.file-shell-text {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.file-shell-selected {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(90, 140, 255, 0.10);
+    border: 1px solid rgba(90, 140, 255, 0.18);
+    color: #245ad8;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+    max-width: 100%;
+    word-break: break-word;
+}
+
+.file-shell-selected.is-empty {
+    background: rgba(29, 55, 92, 0.06);
+    border-color: rgba(29, 55, 92, 0.10);
+    color: rgba(21, 32, 51, 0.56);
+}
+
+.file-shell-hint {
+    color: rgba(21, 32, 51, 0.56);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+    .file-shell-selected {
+        width: 100%;
+    }
+}
+</style>
+
+<div class="upload-page-stack">
+    <section class="page-intro glass-panel">
+        <div>
+            <h1>Загрузка документа</h1>
         </div>
+    </section>
 
-        <form class="form upload-form" method="post" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="title">Название документа</label>
-                <input
-                    id="title"
-                    name="title"
-                    type="text"
-                    placeholder="Например: ГОСТ P 52653-2006"
-                >
-            </div>
-
-            <div class="form-group">
-                <label for="file">Файл</label>
-                <div class="file-shell">
-                    <input
-                        id="file"
-                        name="file"
-                        type="file"
-                        accept=".pdf,.docx"
-                        required
-                    >
-                    <div class="file-shell-content">
-                        <div class="file-shell-icon">+</div>
-                        <div class="file-shell-text">
-                            <strong>Выбери PDF или DOCX</strong>
-                            
-                        </div>
-                    </div>
+    <section class="upload-layout">
+        <section class="glass-panel upload-main-card">
+            <div class="section-head">
+                <div>
+                    <h2>Добавить документ</h2>
                 </div>
             </div>
 
-            <div class="upload-actions">
-                <button class="button" type="submit">Загрузить и обработать</button>
-                <a class="button button-secondary" href="{{ url_for('main.documents') }}">К документам</a>
-            </div>
-        </form>
+            <form class="form upload-form" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="title">Название документа</label>
+                    <input
+                        id="title"
+                        name="title"
+                        type="text"
+                        placeholder="Например: ГОСТ P 52653-2006"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="file">Файл</label>
+
+                    <div class="file-shell">
+                        <input
+                            id="file"
+                            name="file"
+                            type="file"
+                            accept=".pdf,.docx"
+                            required
+                        >
+
+                        <div class="file-shell-content">
+                            <div class="file-shell-icon">+</div>
+
+                            <div class="file-shell-text">
+                                <strong id="file-shell-title">Выбери PDF или DOCX</strong>
+
+                                <span
+                                    id="file-selected-name"
+                                    class="file-shell-selected is-empty"
+                                >
+                                    Файл пока не выбран
+                                </span>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="upload-actions">
+                    <button class="button" type="submit">Загрузить и обработать</button>
+                    <a class="button button-secondary" href="{{ url_for('main.documents') }}">К документам</a>
+                </div>
+            </form>
+        </section>
     </section>
-    </aside>
-</section>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const fileInput = document.getElementById("file");
+    const fileNameLabel = document.getElementById("file-selected-name");
+    const fileShellTitle = document.getElementById("file-shell-title");
+
+    if (!fileInput || !fileNameLabel || !fileShellTitle) {
+        return;
+    }
+
+    fileInput.addEventListener("change", () => {
+        const file = fileInput.files && fileInput.files.length > 0
+            ? fileInput.files[0]
+            : null;
+
+        if (!file) {
+            fileNameLabel.textContent = "Файл пока не выбран";
+            fileNameLabel.classList.add("is-empty");
+            fileShellTitle.textContent = "Выбери PDF или DOCX";
+            return;
+        }
+
+        fileNameLabel.textContent = file.name;
+        fileNameLabel.classList.remove("is-empty");
+        fileShellTitle.textContent = "Файл выбран";
+    });
+});
+</script>
+
 {% endblock %}
