@@ -9,6 +9,8 @@ LATIN_RE = r"A-Za-z"
 LETTER_RE = rf"{LATIN_RE}{CYRILLIC_RE}"
 SOFT_HYPHEN_MARK = "\ue000"
 
+FRAME_BORDER_CHARS = "_-—–─━═=|│┃║┌┐└┘┏┓┗┛╭╮╰╯╔╗╚╝╠╣╦╩╬+"
+
 TOKEN_RE = re.compile(
     rf"\([A-Za-zА-Яа-яЁё0-9\-]+\)|[A-Za-zА-Яа-яЁё0-9]+(?:-[A-Za-zА-Яа-яЁё0-9]+)*"
 )
@@ -263,6 +265,41 @@ def normalize_unicode(value: str) -> str:
     return value
 
 
+def remove_frame_artifacts(value: str) -> str:
+    """
+    Убирает фрагменты рамок таблиц/врезок из PDF.
+
+    В некоторых ГОСТах терминологическая статья помещена в рамку. При
+    извлечении текста верхняя или нижняя граница рамки может попасть в строку
+    как длинная последовательность символов "_", "-", "─", "═" и т.п.
+    Эта функция удаляет только длинные служебные границы и не трогает обычные
+    дефисы внутри терминов.
+    """
+
+    border_class = re.escape(FRAME_BORDER_CHARS)
+    cleaned_lines: list[str] = []
+
+    for raw_line in value.splitlines():
+        line = raw_line.strip()
+        compact = re.sub(r"\s+", "", line)
+
+        if compact and re.fullmatch(rf"[{border_class}]{{3,}}", compact):
+            continue
+
+        raw_line = re.sub(rf"^\s*(?:[{border_class}]\s*){{3,}}", "", raw_line)
+        raw_line = re.sub(rf"(?:\s*[{border_class}]){{3,}}\s*$", "", raw_line)
+
+        # Отдельный случай: PDF иногда дает начало строки как "| термин" или
+        # "│ термин". Одинарную вертикальную границу убираем только если после
+        # нее сразу начинается текст, чтобы не повредить обычные символы.
+        raw_line = re.sub(rf"^\s*[|│┃║]\s+(?=[{LETTER_RE}])", "", raw_line)
+        raw_line = re.sub(rf"\s+[|│┃║]\s*$", "", raw_line)
+
+        cleaned_lines.append(raw_line)
+
+    return "\n".join(cleaned_lines)
+
+
 def apply_known_fused_words(value: str) -> str:
     """
     Исправляет реальные склейки, которые появляются после извлечения текста из PDF.
@@ -353,6 +390,7 @@ def remove_latin_noise_inside_russian(value: str) -> str:
 
 def clean_line(value: str) -> str:
     value = normalize_unicode(value)
+    value = remove_frame_artifacts(value)
     value = value.replace(SOFT_HYPHEN_MARK, "")
     value = apply_known_fused_words(value)
     value = remove_latin_noise_inside_russian(value)
@@ -498,6 +536,7 @@ def looks_like_definition(definition: str, require_eto: bool = False) -> bool:
 def cleanup_text_for_extraction(text: str) -> str:
     text = normalize_unicode(text)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = remove_frame_artifacts(text)
 
     # Сначала чистим каждую физическую строку от правой английской колонки.
     # Это важно сделать ДО склейки переносов: "пригод­    data\nном" должно
@@ -523,6 +562,7 @@ def cleanup_text_for_extraction(text: str) -> str:
     cleaned_lines = [clean_line(line) if line.strip() else "" for line in text.split("\n")]
 
     text = "\n".join(cleaned_lines)
+    text = remove_frame_artifacts(text)
     text = apply_known_fused_words(text)
     text = remove_latin_noise_inside_russian(text)
     text = re.sub(r"[ \t]+", " ", text)
@@ -717,6 +757,8 @@ def is_page_marker_line(line: str) -> bool:
         return True
     if "ГОСТ Р 59870" in line:
         return True
+    if "ГОСТ Р 59871" in line:
+        return True
     if "ГОСТ Р ИСО/МЭК" in line:
         return True
     if line.lower() == "издание официальное":
@@ -907,8 +949,8 @@ def extract_structured_gost_entries(glossary_area: str) -> list[dict]:
     Извлекает структурированные терминологические статьи.
 
     Сначала работает старая ветка для ГОСТ Р 52653-2006, затем новая общая
-    ветка для ГОСТ Р 59870-2021 и ГОСТ Р ИСО/МЭК 2382-36-2011. Результаты
-    объединяются без дублей.
+    ветка для ГОСТ Р 59870-2021, ГОСТ Р 59871-2021 и
+    ГОСТ Р ИСО/МЭК 2382-36-2011. Результаты объединяются без дублей.
     """
 
     results: list[dict] = []
