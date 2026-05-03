@@ -3,101 +3,129 @@
 {% block title %}Документы — Semantic Map{% endblock %}
 
 {% block content %}
-<style>
-.documents-page-stack {
-    display: grid;
-    gap: 22px;
-}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/entity_autocomplete.css') }}">
 
-.documents-page-stack > .page-intro,
-.documents-page-stack > .stats-grid,
-.documents-page-stack > .section-card {
-    margin-bottom: 0;
-}
-</style>
+<section class="page-intro glass-panel">
+  <div>
+    <h1>Документы</h1>
+  </div>
+</section>
 
-<div class="documents-page-stack">
-    <section class="page-intro glass-panel">
-        <div>
-            <h1>Документы</h1>
-        </div>
-    </section>
+{% if documents %}
+<section class="entity-search-panel glass-panel">
+  <div class="section-head">
+    <div>
+      <h2>Поиск среди документов</h2>
+    </div>
+  </div>
 
-        
+  <form class="entity-search-grid" onsubmit="return false;">
+    <div class="entity-search-field">
+     <input
+        id="documents-search-input"
+        class="entity-search-input"
+        type="text"
+        placeholder="Начни вводить название документа"
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <div id="documents-search-dropdown" class="entity-search-dropdown"></div>
+    </div>
 
-    <section class="section-card glass-panel">
-        <div class="section-head">
-            <div>
-                <h2>Реестр документов</h2>
-            </div>
+    <div class="entity-search-actions">
+      <button class="button" type="button" onclick="document.getElementById('documents-search-input').dispatchEvent(new Event('input'));">Найти</button>
+      <button id="documents-search-clear" class="button button-secondary" type="button">Сбросить</button>
+    </div>
+  </form>
+</section>
+{% endif %}
 
-            <div class="page-actions">
-                <span class="info-pill">Записей: {{ documents|length }}</span>
-                <a class="button" href="{{ url_for('main.upload') }}">Добавить документ</a>
-            </div>
-        </div>
+<section class="section-card glass-panel">
+  <div class="section-head">
+    <div>
+      <h2>Реестр документов</h2>
+    </div>
+    <div class="page-actions">
+      <span id="documents-count" class="info-pill">Записей: {{ documents|length }}</span>
+      <a class="button" href="{{ url_for('main.upload') }}">Добавить документ</a>
+    </div>
+  </div>
 
-        {% if documents %}
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Документ</th>
-                            <th>Формат</th>
-                           
-                            <th>Термины</th>
-                            <th>Дата</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for doc in documents %}
-                            <tr>
-                                <td>
-                                    <div class="table-title">{{ doc.title }}</div>
-                                    <div class="table-subtitle">{{ doc.original_filename }}</div>
-                                </td>
-                                <td>
-                                    <span class="status-pill">{{ doc.file_type|upper }}</span>
-                                </td>
-                               
-                                <td>
-                                    <span class="status-pill">{{ doc.distinct_terms_count }}</span>
-                                </td>
-                                <td>{{ doc.created_at }}</td>
-                                <td>
-                                    <div class="page-actions">
-                                        <a class="text-link" href="{{ url_for('main.document_detail', document_id=doc.id) }}">
-                                            Открыть
-                                        </a>
+  {% if documents %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Документ</th>
+            <th>Формат</th>
+            <th>Пары</th>
+            <th>Термины</th>
+            <th>Дата</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in documents %}
+            <tr
+              data-search-row
+              data-autocomplete-label="{{ doc.title }}"
+              data-autocomplete-meta="{{ doc.original_filename }}"
+              data-search-text="{{ doc.title }} {{ doc.original_filename }} {{ doc.file_type }} {{ doc.created_at }}"
+            >
+              <td>
+                <strong>{{ doc.title }}</strong>
+                <div class="muted">{{ doc.original_filename }}</div>
+              </td>
+              <td>
+                <span class="badge">{{ doc.file_type|upper }}</span>
+              </td>
+              <td>{{ doc.extracted_pairs_count }}</td>
+              <td>{{ doc.distinct_terms_count }}</td>
+              <td>{{ doc.created_at }}</td>
+              <td>
+                <div class="table-actions">
+                  <a class="button button-small" href="{{ url_for('main.document_detail', document_id=doc.id) }}">Открыть</a>
+                  <form
+                    method="post"
+                    action="{{ url_for('main.document_delete', document_id=doc.id) }}"
+                    style="display: inline;"
+                    onsubmit="return confirm('Удалить документ «{{ doc.title }}»?');"
+                  >
+                    <button class="button button-small button-danger" type="submit">Удалить</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
-                                        <form
-                                            method="post"
-                                            action="{{ url_for('main.document_delete', document_id=doc.id) }}"
-                                            onsubmit="return confirm('Удалить документ {{ doc.title }}?');"
-                                            class="inline-form"
-                                        >
-                                            <button type="submit" class="text-link text-link-danger text-link-button">
-                                                Удалить
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <h3>Документы пока не загружены</h3>
-                <p>
-                    Добавь первый файл, чтобы система смогла извлечь термины,
-                    построить отчет и сформировать семантическую карту.
-                </p>
-                <a class="button" href="{{ url_for('main.upload') }}">Загрузить первый документ</a>
-            </div>
-        {% endif %}
-    </section>
-</div>
+    <div id="documents-filter-empty" class="empty-state entity-filter-empty">
+      <h3>Ничего не найдено</h3>
+      <p>В текущем реестре нет документа, совпадающего с введенным текстом.</p>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>Документы пока не загружены</h3>
+      <p>Добавь первый файл, чтобы система смогла извлечь термины, построить отчет и сформировать семантическую карту.</p>
+      <a class="button" href="{{ url_for('main.upload') }}">Загрузить первый документ</a>
+    </div>
+  {% endif %}
+</section>
+
+{% if documents %}
+<script src="{{ url_for('static', filename='js/entity_autocomplete.js') }}"></script>
+<script>
+EntityAutocomplete.init({
+  inputId: "documents-search-input",
+  dropdownId: "documents-search-dropdown",
+  clearButtonId: "documents-search-clear",
+  rowsSelector: "[data-search-row]",
+  countId: "documents-count",
+  emptyId: "documents-filter-empty",
+  countLabel: "Записей"
+});
+</script>
+{% endif %}
 {% endblock %}
