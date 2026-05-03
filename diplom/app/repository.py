@@ -14,12 +14,10 @@ def now_str() -> str:
 def get_or_create_term(name: str) -> int:
     db = get_db()
     normalized_name = normalize_for_lookup(name)
-
     row = db.execute(
         "SELECT id FROM terms WHERE normalized_name = ?",
         (normalized_name,),
     ).fetchone()
-
     if row:
         return row["id"]
 
@@ -36,12 +34,10 @@ def get_or_create_term(name: str) -> int:
 def get_or_create_definition(text: str) -> int:
     db = get_db()
     normalized_text = normalize_for_lookup(text)
-
     row = db.execute(
         "SELECT id FROM definitions WHERE normalized_text = ?",
         (normalized_text,),
     ).fetchone()
-
     if row:
         return row["id"]
 
@@ -66,7 +62,6 @@ def save_document_with_entries(
 ) -> int:
     db = get_db()
     created_at = now_str()
-
     cursor = db.execute(
         """
         INSERT INTO documents (
@@ -85,13 +80,11 @@ def save_document_with_entries(
             created_at,
         ),
     )
-
     document_id = int(cursor.lastrowid)
 
     for entry in entries:
         term_id = get_or_create_term(entry["term"])
         definition_id = get_or_create_definition(entry["definition"])
-
         db.execute(
             """
             INSERT INTO term_occurrences (
@@ -114,33 +107,27 @@ def save_document_with_entries(
 
 def cleanup_orphan_records() -> None:
     db = get_db()
-
     db.execute(
         """
         DELETE FROM definitions
         WHERE id NOT IN (
-            SELECT DISTINCT definition_id
-            FROM term_occurrences
+            SELECT DISTINCT definition_id FROM term_occurrences
         )
         """
     )
-
     db.execute(
         """
         DELETE FROM terms
         WHERE id NOT IN (
-            SELECT DISTINCT term_id
-            FROM term_occurrences
+            SELECT DISTINCT term_id FROM term_occurrences
         )
         """
     )
-
     db.commit()
 
 
 def list_documents(limit: int | None = None):
     db = get_db()
-
     query = """
         SELECT
             d.id,
@@ -156,12 +143,10 @@ def list_documents(limit: int | None = None):
         GROUP BY d.id
         ORDER BY d.id DESC
     """
-
     params: tuple[Any, ...] = ()
     if limit is not None:
         query += " LIMIT ?"
         params = (limit,)
-
     return db.execute(query, params).fetchall()
 
 
@@ -170,14 +155,8 @@ def get_document(document_id: int):
     return db.execute(
         """
         SELECT
-            id,
-            title,
-            original_filename,
-            saved_filename,
-            file_type,
-            full_text,
-            extracted_pairs_count,
-            created_at
+            id, title, original_filename, saved_filename, file_type,
+            full_text, extracted_pairs_count, created_at
         FROM documents
         WHERE id = ?
         """,
@@ -201,7 +180,7 @@ def get_document_occurrences(document_id: int):
         JOIN terms t ON t.id = o.term_id
         JOIN definitions df ON df.id = o.definition_id
         WHERE o.document_id = ?
-        ORDER BY t.name COLLATE NOCASE
+        ORDER BY t.name COLLATE NOCASE, o.id
         """,
         (document_id,),
     ).fetchall()
@@ -209,30 +188,20 @@ def get_document_occurrences(document_id: int):
 
 def delete_document(document_id: int) -> dict[str, Any] | None:
     db = get_db()
-
     document = db.execute(
         """
-        SELECT
-            id,
-            title,
-            saved_filename
+        SELECT id, title, saved_filename
         FROM documents
         WHERE id = ?
         """,
         (document_id,),
     ).fetchone()
-
     if not document:
         return None
 
-    db.execute(
-        "DELETE FROM documents WHERE id = ?",
-        (document_id,),
-    )
+    db.execute("DELETE FROM documents WHERE id = ?", (document_id,))
     db.commit()
-
     cleanup_orphan_records()
-
     return {
         "id": int(document["id"]),
         "title": document["title"],
@@ -243,7 +212,6 @@ def delete_document(document_id: int) -> dict[str, Any] | None:
 def list_terms(search_text: str = ""):
     db = get_db()
     normalized_search = f"%{normalize_for_lookup(search_text)}%"
-
     return db.execute(
         """
         SELECT
@@ -307,33 +275,21 @@ def get_term_occurrences(term_id: int):
 
 def delete_term(term_id: int) -> dict[str, Any] | None:
     db = get_db()
-
     term = db.execute(
         """
-        SELECT
-            id,
-            name
+        SELECT id, name
         FROM terms
         WHERE id = ?
         """,
         (term_id,),
     ).fetchone()
-
     if not term:
         return None
 
-    db.execute(
-        "DELETE FROM term_occurrences WHERE term_id = ?",
-        (term_id,),
-    )
-    db.execute(
-        "DELETE FROM terms WHERE id = ?",
-        (term_id,),
-    )
+    db.execute("DELETE FROM term_occurrences WHERE term_id = ?", (term_id,))
+    db.execute("DELETE FROM terms WHERE id = ?", (term_id,))
     db.commit()
-
     cleanup_orphan_records()
-
     return {
         "id": int(term["id"]),
         "name": term["name"],
@@ -361,19 +317,15 @@ def list_conflicting_terms():
 
 def get_stats() -> dict[str, int]:
     db = get_db()
-
     documents_count = db.execute(
         "SELECT COUNT(*) AS count FROM documents"
     ).fetchone()["count"]
-
     terms_count = db.execute(
         "SELECT COUNT(*) AS count FROM terms"
     ).fetchone()["count"]
-
     definitions_count = db.execute(
         "SELECT COUNT(*) AS count FROM definitions"
     ).fetchone()["count"]
-
     conflicts_count = db.execute(
         """
         SELECT COUNT(*) AS count
@@ -402,7 +354,6 @@ def _fetch_occurrence_rows(
     document_id: int | None = None,
 ):
     db = get_db()
-
     query = """
         SELECT
             o.id,
@@ -422,7 +373,6 @@ def _fetch_occurrence_rows(
         JOIN definitions df ON df.id = o.definition_id
         WHERE 1 = 1
     """
-
     params: list[Any] = []
 
     if term_id is not None:
@@ -434,18 +384,13 @@ def _fetch_occurrence_rows(
         params.append(document_id)
 
     query += """
-        ORDER BY
-            d.title COLLATE NOCASE,
-            t.name COLLATE NOCASE,
-            o.id
+        ORDER BY d.title COLLATE NOCASE, t.name COLLATE NOCASE, o.id
     """
-
     return db.execute(query, tuple(params)).fetchall()
 
 
 def get_term_report_groups():
     rows = _fetch_occurrence_rows()
-
     term_map: dict[int, dict[str, Any]] = {}
 
     for row in rows:
@@ -478,7 +423,6 @@ def get_term_report_groups():
 
         def_group = group["_definitions_map"][def_key]
         doc_id = int(row["document_id"])
-
         if doc_id not in def_group["_document_seen"]:
             def_group["_document_seen"].add(doc_id)
             def_group["documents"].append(
@@ -495,7 +439,6 @@ def get_term_report_groups():
             def_group["source_lines"].append(source_line)
 
     result: list[dict[str, Any]] = []
-
     for group in term_map.values():
         group["documents_count"] = len(group["_documents_seen"])
         group["definitions_count"] = len(group["definitions"])
@@ -504,11 +447,16 @@ def get_term_report_groups():
         for def_group in group["definitions"]:
             def_group["documents"].sort(key=lambda item: item["title"].lower())
             def_group["document_ids"].sort()
-            def_group["documents_label"] = ", ".join(str(doc_id) for doc_id in def_group["document_ids"])
+            def_group["documents_label"] = ", ".join(
+                str(doc_id) for doc_id in def_group["document_ids"]
+            )
             def_group.pop("_document_seen", None)
 
         group["definitions"].sort(
-            key=lambda item: (len(item["documents"]) * -1, item["definition_text"].lower())
+            key=lambda item: (
+                len(item["documents"]) * -1,
+                item["definition_text"].lower(),
+            )
         )
         group.pop("_documents_seen", None)
         group.pop("_definitions_map", None)
@@ -520,7 +468,6 @@ def get_term_report_groups():
 
 def get_document_report_groups():
     rows = _fetch_occurrence_rows()
-
     doc_map: dict[int, dict[str, Any]] = {}
 
     for row in rows:
@@ -543,16 +490,13 @@ def get_document_report_groups():
 
     result = list(doc_map.values())
     result.sort(key=lambda item: item["document_title"].lower())
-
     for group in result:
         group["terms"].sort(key=lambda item: item["term_name"].lower())
-
     return result
 
 
 def get_report_export_rows():
     rows: list[dict[str, Any]] = []
-
     for term_group in get_term_report_groups():
         for def_group in term_group["definitions"]:
             rows.append(
@@ -561,34 +505,38 @@ def get_report_export_rows():
                     "term_name": term_group["term_name"],
                     "definition_text": def_group["definition_text"],
                     "document_ids": def_group["documents_label"],
-                    "document_titles": ", ".join(doc["title"] for doc in def_group["documents"]),
+                    "document_titles": ", ".join(
+                        doc["title"] for doc in def_group["documents"]
+                    ),
                     "documents_count": len(def_group["documents"]),
                     "definitions_count": term_group["definitions_count"],
                     "has_conflict": "Да" if term_group["has_conflict"] else "Нет",
                 }
             )
-
     return rows
 
 
 def _term_present_in_definition(term_name: str, definition_text: str) -> bool:
     norm_term = normalize_for_lookup(term_name)
     norm_definition = normalize_for_lookup(definition_text)
-
     if not norm_term or not norm_definition:
         return False
 
-    pattern = r"(?<!\w)" + re.escape(norm_term).replace(r"\ ", r"\s+") + r"(?!\w)"
+    pattern = (
+        r"(?<![0-9A-Za-zА-Яа-яЁё_])"
+        + re.escape(norm_term)
+        + r"(?![0-9A-Za-zА-Яа-яЁё_])"
+    )
     return re.search(pattern, norm_definition) is not None
 
 
 def _get_term_stats_map(term_ids: list[int]) -> dict[int, dict[str, Any]]:
-    if not term_ids:
+    unique_ids = sorted({int(term_id) for term_id in term_ids})
+    if not unique_ids:
         return {}
 
     db = get_db()
-    placeholders = ",".join("?" for _ in term_ids)
-
+    placeholders = ",".join("?" for _ in unique_ids)
     rows = db.execute(
         f"""
         SELECT
@@ -602,7 +550,7 @@ def _get_term_stats_map(term_ids: list[int]) -> dict[int, dict[str, Any]]:
         WHERE t.id IN ({placeholders})
         GROUP BY t.id, t.name
         """,
-        tuple(term_ids),
+        tuple(unique_ids),
     ).fetchall()
 
     return {
@@ -617,16 +565,28 @@ def _get_term_stats_map(term_ids: list[int]) -> dict[int, dict[str, Any]]:
 
 
 def _term_node_color(term_stats: dict[str, Any], selected: bool = False) -> str:
+    if int(term_stats.get("definitions_count", 0)) > 1:
+        return "#dc2626"
     if selected:
         return "#d97706"
-
-    if int(term_stats["definitions_count"]) > 1:
-        return "#dc2626"
-
-    if int(term_stats["documents_count"]) > 1:
-        return "#16a34a"
-
     return "#2563eb"
+
+
+def _empty_map_summary(mode: str = "empty") -> dict[str, Any]:
+    return {
+        "mode": mode,
+        "title": "",
+        "documents_count": 0,
+        "terms_count": 0,
+        "definitions_count": 0,
+        "links_count": 0,
+    }
+
+
+def _definition_node_id(*parts: Any) -> str:
+    raw = "::".join(str(part) for part in parts)
+    digest = hashlib.md5(raw.encode("utf-8")).hexdigest()[:12]
+    return f"definition-{digest}"
 
 
 def build_semantic_map_data(
@@ -638,14 +598,7 @@ def build_semantic_map_data(
         return {
             "nodes": [],
             "edges": [],
-            "summary": {
-                "mode": "empty",
-                "title": "",
-                "documents_count": 0,
-                "terms_count": 0,
-                "definitions_count": 0,
-                "links_count": 0,
-            },
+            "summary": _empty_map_summary(),
         }
 
     nodes: list[dict[str, Any]] = []
@@ -653,18 +606,24 @@ def build_semantic_map_data(
     node_seen: set[str] = set()
     edge_seen: set[tuple[str, str, str]] = set()
 
-    def add_node(node_id: str, label: str, node_type: str, color: str) -> None:
+    def add_node(
+        node_id: str,
+        label: str,
+        node_type: str,
+        color: str,
+        **extra: Any,
+    ) -> None:
         if node_id in node_seen:
             return
         node_seen.add(node_id)
-        nodes.append(
-            {
-                "id": node_id,
-                "label": label,
-                "type": node_type,
-                "color": color,
-            }
-        )
+        node = {
+            "id": node_id,
+            "label": label,
+            "type": node_type,
+            "color": color,
+        }
+        node.update(extra)
+        nodes.append(node)
 
     def add_edge(source: str, target: str, label: str, color: str) -> None:
         key = (source, target, label)
@@ -686,51 +645,78 @@ def build_semantic_map_data(
             return {
                 "nodes": [],
                 "edges": [],
-                "summary": {
-                    "mode": "term",
-                    "title": "",
-                    "documents_count": 0,
-                    "terms_count": 0,
-                    "definitions_count": 0,
-                    "links_count": 0,
-                },
+                "summary": _empty_map_summary("term"),
             }
 
         occurrences = get_term_occurrences(term_id)
         term_stats_map = _get_term_stats_map([term_id])
+        selected_term_stats = term_stats_map.get(
+            term_id,
+            {
+                "documents_count": int(selected_term["documents_count"]),
+                "definitions_count": int(selected_term["definitions_count"]),
+            },
+        )
 
         main_term_node_id = f"term-{term_id}"
         add_node(
             main_term_node_id,
             selected_term["name"],
             "term",
-            _term_node_color(term_stats_map[term_id], selected=True),
+            _term_node_color(selected_term_stats, selected=True),
+            definitions_count=int(selected_term_stats["definitions_count"]),
+            documents_count=int(selected_term_stats["documents_count"]),
+            selected=True,
         )
 
-        definition_node_ids: dict[str, str] = {}
-        related_term_ids: set[int] = set()
         doc_ids: set[int] = set()
+        definition_node_ids: dict[tuple[int, str], str] = {}
+        related_term_ids: set[int] = set()
+        related_term_stats_cache: dict[int, dict[str, Any]] = {}
 
         for occurrence in occurrences:
             doc_id = int(occurrence["document_id"])
             doc_ids.add(doc_id)
 
             document_node_id = f"document-{doc_id}"
-            add_node(document_node_id, occurrence["document_title"], "document", "#1d4ed8")
-            add_edge(document_node_id, main_term_node_id, "содержит термин", "#94a3b8")
-
-            def_key = normalize_for_lookup(occurrence["definition_text"])
-            if def_key not in definition_node_ids:
-                digest = hashlib.md5(def_key.encode("utf-8")).hexdigest()[:12]
-                definition_node_ids[def_key] = f"definition-{digest}"
-
-            definition_node_id = definition_node_ids[def_key]
-            add_node(definition_node_id, occurrence["definition_text"], "definition", "#7c3aed")
+            add_node(
+                document_node_id,
+                occurrence["document_title"],
+                "document",
+                "#1d4ed8",
+                filename=occurrence["original_filename"],
+            )
             add_edge(
                 main_term_node_id,
+                document_node_id,
+                "упоминается в документе",
+                "#94a3b8",
+            )
+
+            def_key = normalize_for_lookup(occurrence["definition_text"])
+            definition_map_key = (doc_id, def_key)
+            if definition_map_key not in definition_node_ids:
+                definition_node_ids[definition_map_key] = _definition_node_id(
+                    "term-mode",
+                    term_id,
+                    doc_id,
+                    def_key,
+                )
+
+            definition_node_id = definition_node_ids[definition_map_key]
+            add_node(
                 definition_node_id,
-                "имеет определение",
-                "#16a34a" if selected_term["definitions_count"] <= 1 else "#dc2626",
+                occurrence["definition_text"],
+                "definition",
+                "#7c3aed",
+                document_id=doc_id,
+                term_id=term_id,
+            )
+            add_edge(
+                document_node_id,
+                definition_node_id,
+                "содержит определение",
+                "#94a3b8",
             )
 
             document_occurrences = get_document_occurrences(doc_id)
@@ -739,21 +725,36 @@ def build_semantic_map_data(
                 if other_term_id == term_id:
                     continue
 
-                if _term_present_in_definition(other_row["term_name"], occurrence["definition_text"]):
+                if _term_present_in_definition(
+                    other_row["term_name"],
+                    occurrence["definition_text"],
+                ):
                     related_term_ids.add(other_term_id)
+                    if other_term_id not in related_term_stats_cache:
+                        other_term = get_term(other_term_id)
+                        if not other_term:
+                            continue
+                        related_term_stats_cache[other_term_id] = {
+                            "documents_count": int(other_term["documents_count"]),
+                            "definitions_count": int(other_term["definitions_count"]),
+                        }
 
-                    other_term = get_term(other_term_id)
-                    if not other_term:
-                        continue
-
-                    other_color = (
-                        "#dc2626"
-                        if other_term["definitions_count"] > 1
-                        else "#0f766e"
+                    related_stats = related_term_stats_cache[other_term_id]
+                    related_term_node_id = f"related-term-{other_term_id}"
+                    add_node(
+                        related_term_node_id,
+                        other_row["term_name"],
+                        "related_term",
+                        _term_node_color(related_stats, selected=False),
+                        definitions_count=int(related_stats["definitions_count"]),
+                        documents_count=int(related_stats["documents_count"]),
                     )
-                    other_term_node_id = f"related-term-{other_term_id}"
-                    add_node(other_term_node_id, other_row["term_name"], "related_term", other_color)
-                    add_edge(definition_node_id, other_term_node_id, "упоминает термин", "#f59e0b")
+                    add_edge(
+                        definition_node_id,
+                        related_term_node_id,
+                        "упоминает термин",
+                        "#f59e0b",
+                    )
 
         summary = {
             "mode": "term",
@@ -763,7 +764,6 @@ def build_semantic_map_data(
             "definitions_count": len(definition_node_ids),
             "links_count": len(edges),
         }
-
         return {
             "nodes": nodes,
             "edges": edges,
@@ -775,14 +775,7 @@ def build_semantic_map_data(
         return {
             "nodes": [],
             "edges": [],
-            "summary": {
-                "mode": "document",
-                "title": "",
-                "documents_count": 0,
-                "terms_count": 0,
-                "definitions_count": 0,
-                "links_count": 0,
-            },
+            "summary": _empty_map_summary("document"),
         }
 
     occurrences = get_document_occurrences(document_id)
@@ -810,21 +803,36 @@ def build_semantic_map_data(
             occurrence["term_name"],
             "term",
             _term_node_color(term_stats, selected=False),
+            definitions_count=int(term_stats["definitions_count"]),
+            documents_count=int(term_stats["documents_count"]),
         )
-        add_edge(document_node_id, term_node_id, "содержит термин", "#94a3b8")
+        add_edge(
+            document_node_id,
+            term_node_id,
+            "содержит термин",
+            "#94a3b8",
+        )
 
         def_key = normalize_for_lookup(occurrence["definition_text"])
         if def_key not in definition_node_ids:
-            digest = hashlib.md5((def_key + f"-{document_id}").encode("utf-8")).hexdigest()[:12]
-            definition_node_ids[def_key] = f"definition-{digest}"
+            definition_node_ids[def_key] = _definition_node_id(
+                "document-mode",
+                document_id,
+                def_key,
+            )
 
         definition_node_id = definition_node_ids[def_key]
-        add_node(definition_node_id, occurrence["definition_text"], "definition", "#7c3aed")
+        add_node(
+            definition_node_id,
+            occurrence["definition_text"],
+            "definition",
+            "#7c3aed",
+        )
         add_edge(
             term_node_id,
             definition_node_id,
             "имеет определение",
-            "#16a34a" if int(term_stats["definitions_count"]) <= 1 else "#dc2626",
+            "#94a3b8",
         )
 
     for occurrence in occurrences:
@@ -836,9 +844,17 @@ def build_semantic_map_data(
             if other_term_id == int(occurrence["term_id"]):
                 continue
 
-            if _term_present_in_definition(other_row["term_name"], occurrence["definition_text"]):
+            if _term_present_in_definition(
+                other_row["term_name"],
+                occurrence["definition_text"],
+            ):
                 related_term_node_id = f"term-{other_term_id}"
-                add_edge(source_definition_node_id, related_term_node_id, "упоминает термин", "#f59e0b")
+                add_edge(
+                    source_definition_node_id,
+                    related_term_node_id,
+                    "упоминает термин",
+                    "#f59e0b",
+                )
 
     summary = {
         "mode": "document",
@@ -848,7 +864,6 @@ def build_semantic_map_data(
         "definitions_count": len(definition_node_ids),
         "links_count": len(edges),
     }
-
     return {
         "nodes": nodes,
         "edges": edges,
