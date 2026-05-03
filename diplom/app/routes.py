@@ -2,7 +2,6 @@ import io
 import json
 import mimetypes
 import re
-import textwrap
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -46,7 +45,20 @@ from .repository import (
 from .services.document_parser import extract_text
 from .services.term_extractor import extract_glossary_entries
 
+
 bp = Blueprint("main", __name__)
+
+
+REPORT_DOTTED_EDGE_COLORS = [
+    "#f59e0b",
+    "#3d72f6",
+    "#8057d8",
+    "#df4565",
+    "#0ea5e9",
+    "#f97316",
+    "#a855f7",
+    "#e11d48",
+]
 
 
 def now_iso() -> str:
@@ -117,12 +129,8 @@ def create_user(email: str, password_hash: str) -> int:
     cursor = db.execute(
         """
         INSERT INTO users (
-            username,
-            display_name,
-            email,
-            password_hash,
-            avatar_filename,
-            created_at
+            username, display_name, email, password_hash,
+            avatar_filename, created_at
         )
         VALUES (?, ?, ?, ?, ?, ?)
         """,
@@ -151,7 +159,6 @@ def load_current_user():
         return None
 
     total_users = users_count()
-
     if total_users == 0:
         return redirect(url_for("main.register"))
 
@@ -201,10 +208,8 @@ def register():
             email=email_value,
             password_hash=generate_password_hash(password),
         )
-
         session.clear()
         session["user_id"] = user_id
-
         flash("Регистрация завершена.", "success")
         return redirect(url_for("main.index"))
 
@@ -234,7 +239,6 @@ def login():
 
         session.clear()
         session["user_id"] = int(user["id"])
-
         flash("Вход выполнен.", "success")
         return redirect(url_for("main.index"))
 
@@ -251,7 +255,6 @@ def logout():
 def index():
     stats = get_stats()
     recent_documents = list_documents(limit=5)
-
     return render_template(
         "index.html",
         stats=stats,
@@ -281,16 +284,15 @@ def upload():
 
         try:
             uploaded_file.save(save_path)
-
             text = extract_text(save_path)
 
             if not text.strip():
                 raise ValueError(
-                    "Не удалось извлечь текст. Для MVP нужны текстовые PDF или DOCX."
+                    "Не удалось извлечь текст. "
+                    "Для MVP нужны текстовые PDF или DOCX."
                 )
 
             entries = extract_glossary_entries(text)
-
             document_id = save_document_with_entries(
                 title=title or Path(original_filename).stem,
                 original_filename=original_filename,
@@ -304,13 +306,11 @@ def upload():
                 f"Документ загружен. Найдено терминов: {len(entries)}.",
                 "success",
             )
-
             return redirect(url_for("main.document_detail", document_id=document_id))
 
         except Exception as exc:
             if save_path.exists():
                 save_path.unlink()
-
             flash(f"Ошибка обработки файла: {exc}", "error")
             return redirect(url_for("main.upload"))
 
@@ -326,12 +326,10 @@ def documents():
 @bp.route("/documents/<int:document_id>")
 def document_detail(document_id: int):
     document = get_document(document_id)
-
     if not document:
         abort(404)
 
     occurrences = get_document_occurrences(document_id)
-
     return render_template(
         "document_detail.html",
         document=document,
@@ -342,7 +340,6 @@ def document_detail(document_id: int):
 @bp.route("/documents/<int:document_id>/source")
 def document_source(document_id: int):
     document = get_document(document_id)
-
     if not document:
         abort(404)
 
@@ -352,17 +349,14 @@ def document_source(document_id: int):
 @bp.route("/documents/<int:document_id>/source-file")
 def document_source_file(document_id: int):
     document = get_document(document_id)
-
     if not document:
         abort(404)
 
     file_path = Path(current_app.config["UPLOAD_FOLDER"]) / document["saved_filename"]
-
     if not file_path.exists():
         abort(404)
 
     mimetype, _ = mimetypes.guess_type(document["original_filename"])
-
     response = send_file(
         file_path,
         mimetype=mimetype,
@@ -375,19 +369,16 @@ def document_source_file(document_id: int):
     response.headers["Content-Disposition"] = (
         f"inline; filename*=UTF-8''{quoted_filename}"
     )
-
     return response
 
 
 @bp.route("/documents/<int:document_id>/delete", methods=["POST"])
 def document_delete(document_id: int):
     deleted = delete_document(document_id)
-
     if not deleted:
         abort(404)
 
     file_path = Path(current_app.config["UPLOAD_FOLDER"]) / deleted["saved_filename"]
-
     if file_path.exists():
         file_path.unlink()
 
@@ -398,7 +389,6 @@ def document_delete(document_id: int):
 @bp.route("/documents/<int:document_id>/report.docx")
 def document_report_docx(document_id: int):
     document = get_document(document_id)
-
     if not document:
         abort(404)
 
@@ -431,7 +421,6 @@ def document_report_docx(document_id: int):
 def terms():
     query = request.args.get("q", "").strip()
     terms_list = list_terms(query)
-
     return render_template(
         "terms.html",
         terms=terms_list,
@@ -442,7 +431,6 @@ def terms():
 @bp.route("/terms/<int:term_id>")
 def term_detail(term_id: int):
     term = get_term(term_id)
-
     if not term:
         abort(404)
 
@@ -484,7 +472,6 @@ def term_detail(term_id: int):
 @bp.route("/terms/<int:term_id>/delete", methods=["POST"])
 def term_delete(term_id: int):
     deleted = delete_term(term_id)
-
     if not deleted:
         abort(404)
 
@@ -508,13 +495,11 @@ def semantic_map():
 
     if selected_term_id is not None:
         term = get_term(selected_term_id)
-
         if not term:
             abort(404)
 
     if selected_document_id is not None:
         document = get_document(selected_document_id)
-
         if not document:
             abort(404)
 
@@ -541,7 +526,6 @@ def build_document_conflict_groups(occurrences) -> list[dict]:
 
     for term_id in term_ids:
         term = get_term(term_id)
-
         if not term or int(term["definitions_count"]) <= 1:
             continue
 
@@ -559,7 +543,6 @@ def build_document_conflict_groups(occurrences) -> list[dict]:
                 }
 
             document_id = int(row["document_id"])
-
             if document_id not in definition_map[normalized]["_document_ids"]:
                 definition_map[normalized]["_document_ids"].add(document_id)
                 definition_map[normalized]["documents"].append(
@@ -571,7 +554,6 @@ def build_document_conflict_groups(occurrences) -> list[dict]:
                 )
 
         definitions = list(definition_map.values())
-
         for definition in definitions:
             definition.pop("_document_ids", None)
             definition["documents"].sort(key=lambda item: item["title"].lower())
@@ -600,7 +582,6 @@ def create_document_report_docx(
     map_data: dict,
 ) -> io.BytesIO:
     docx = DocxDocument()
-
     set_docx_base_styles(docx)
 
     title = docx.add_heading("Отчет по документу", level=0)
@@ -612,17 +593,14 @@ def create_document_report_docx(
     docx.add_paragraph(f"Дата загрузки: {document['created_at']}")
 
     total_terms = len({int(row["term_id"]) for row in occurrences})
-    total_definitions = len(occurrences)
     conflict_count = len(conflict_groups)
 
     docx.add_heading("Сводные показатели", level=1)
-
     stats_table = docx.add_table(rows=1, cols=2)
     stats_table.style = "Table Grid"
     stats_table.rows[0].cells[0].text = "Общее количество терминов"
     stats_table.rows[0].cells[1].text = str(total_terms)
 
-    add_docx_table_row(stats_table, "Количество определений", str(total_definitions))
     add_docx_table_row(
         stats_table,
         "Количество конфликтующих терминов",
@@ -630,7 +608,6 @@ def create_document_report_docx(
     )
 
     docx.add_heading("Все определения документа", level=1)
-
     if occurrences:
         definitions_table = docx.add_table(rows=1, cols=2)
         definitions_table.style = "Table Grid"
@@ -647,7 +624,6 @@ def create_document_report_docx(
         docx.add_paragraph("В документе не найдено извлеченных определений.")
 
     docx.add_heading("Конфликтующие термины", level=1)
-
     if conflict_groups:
         for group in conflict_groups:
             docx.add_heading(group["term_name"], level=2)
@@ -707,7 +683,6 @@ def create_document_report_docx(
     output = io.BytesIO()
     docx.save(output)
     output.seek(0)
-
     return output
 
 
@@ -733,27 +708,23 @@ def create_semantic_map_png_pages(
 ) -> list[io.BytesIO]:
     nodes = map_data.get("nodes", [])
     edges = map_data.get("edges", [])
-
     node_by_id = {node["id"]: node for node in nodes}
-    document_nodes = [node for node in nodes if node["type"] == "document"]
 
+    document_nodes = [node for node in nodes if node["type"] == "document"]
     term_nodes = sorted(
         [node for node in nodes if node["type"] == "term"],
         key=lambda item: item["label"].lower(),
     )
 
     term_to_definition: dict[str, str] = {}
-
     for edge in edges:
         if edge["label"] == "имеет определение":
             term_to_definition[edge["source"]] = edge["target"]
 
     rows = []
-
     for term_node in term_nodes:
         definition_id = term_to_definition.get(term_node["id"])
         definition_node = node_by_id.get(definition_id) if definition_id else None
-
         rows.append(
             {
                 "term": term_node,
@@ -772,17 +743,20 @@ def create_semantic_map_png_pages(
             )
         ]
 
+    pages_rows = split_report_map_rows_by_dotted_connections(
+        rows=rows,
+        edges=edges,
+        rows_per_page=rows_per_page,
+    )
+
     pages = []
-    pages_count = (len(rows) + rows_per_page - 1) // rows_per_page
+    pages_count = len(pages_rows)
 
-    for page_index in range(pages_count):
-        start = page_index * rows_per_page
-        end = start + rows_per_page
-
+    for page_index, page_rows in enumerate(pages_rows):
         pages.append(
             create_semantic_map_png_page(
                 document_nodes=document_nodes,
-                rows=rows[start:end],
+                rows=page_rows,
                 edges=edges,
                 page_number=page_index + 1,
                 pages_count=pages_count,
@@ -790,6 +764,81 @@ def create_semantic_map_png_pages(
         )
 
     return pages
+
+
+def split_report_map_rows_by_dotted_connections(
+    *,
+    rows: list[dict],
+    edges: list[dict],
+    rows_per_page: int,
+) -> list[list[dict]]:
+    parent = list(range(len(rows)))
+
+    term_row_index: dict[str, int] = {}
+    definition_row_index: dict[str, int] = {}
+
+    for index, row in enumerate(rows):
+        term = row.get("term")
+        definition = row.get("definition")
+
+        if term:
+            term_row_index[term["id"]] = index
+
+        if definition:
+            definition_row_index[definition["id"]] = index
+
+    def find(index: int) -> int:
+        while parent[index] != index:
+            parent[index] = parent[parent[index]]
+            index = parent[index]
+        return index
+
+    def union(left: int, right: int) -> None:
+        root_left = find(left)
+        root_right = find(right)
+
+        if root_left != root_right:
+            parent[root_right] = root_left
+
+    for edge in edges:
+        if edge.get("label") != "упоминает термин":
+            continue
+
+        source_index = definition_row_index.get(edge.get("source"))
+        target_index = term_row_index.get(edge.get("target"))
+
+        if source_index is None or target_index is None:
+            continue
+
+        union(source_index, target_index)
+
+    components_map: dict[int, list[int]] = {}
+    for index in range(len(rows)):
+        root = find(index)
+        components_map.setdefault(root, []).append(index)
+
+    components = list(components_map.values())
+    components.sort(key=lambda item: min(item))
+
+    pages: list[list[dict]] = []
+    current_page_indexes: list[int] = []
+
+    for component in components:
+        component = sorted(component)
+
+        if (
+            current_page_indexes
+            and len(current_page_indexes) + len(component) > rows_per_page
+        ):
+            pages.append([rows[index] for index in current_page_indexes])
+            current_page_indexes = []
+
+        current_page_indexes.extend(component)
+
+    if current_page_indexes:
+        pages.append([rows[index] for index in current_page_indexes])
+
+    return pages or [rows]
 
 
 def create_semantic_map_png_page(
@@ -815,7 +864,6 @@ def create_semantic_map_png_page(
     x_document = 90
     x_term = 620
     x_definition = 1120
-
     row_gap = 54
     top = 120
 
@@ -823,7 +871,6 @@ def create_semantic_map_png_page(
     measure_draw = ImageDraw.Draw(measure_image)
 
     measured_rows = []
-
     for row in rows:
         term_height = estimate_card_height_by_pixels(
             measure_draw,
@@ -866,7 +913,6 @@ def create_semantic_map_png_page(
 
     image = Image.new("RGB", (width, height), "#f6f9ff")
     draw = ImageDraw.Draw(image)
-
     draw_report_grid(draw, width, height)
 
     positions: dict[str, dict] = {}
@@ -879,6 +925,7 @@ def create_semantic_map_png_page(
         card_widths["document"] - 56,
         118,
     )
+
     document_y = top + max(content_height / 2 - document_height / 2, 0)
 
     if document_nodes:
@@ -890,7 +937,6 @@ def create_semantic_map_png_page(
         }
 
     cursor_y = top
-
     for row in measured_rows:
         row_center = cursor_y + row["row_height"] / 2
 
@@ -913,6 +959,8 @@ def create_semantic_map_png_page(
 
         cursor_y += row["row_height"] + row_gap
 
+    dotted_styles = build_report_dotted_edge_styles(edges, positions)
+
     for edge in edges:
         if edge["label"] == "упоминает термин":
             continue
@@ -923,8 +971,13 @@ def create_semantic_map_png_page(
         if not source or not target:
             continue
 
-        color = "#9aa8bd" if edge["label"] == "содержит термин" else "#8057d8"
-        draw_report_connection(draw, source, target, color=color, dashed=False)
+        draw_report_connection(
+            draw,
+            source,
+            target,
+            color="#94a3b8",
+            dashed=False,
+        )
 
     for edge in edges:
         if edge["label"] != "упоминает термин":
@@ -936,7 +989,15 @@ def create_semantic_map_png_page(
         if not source or not target:
             continue
 
-        draw_report_connection(draw, source, target, color="#111827", dashed=True)
+        dotted_style = dotted_styles.get(report_edge_key(edge), {})
+        draw_report_connection(
+            draw,
+            source,
+            target,
+            color=dotted_style.get("color", "#f59e0b"),
+            dashed=True,
+            route_x=dotted_style.get("route_x"),
+        )
 
     if document_nodes:
         draw_report_card(
@@ -966,7 +1027,6 @@ def create_semantic_map_png_page(
         )
 
         definition = row["definition"]
-
         if definition:
             draw_report_card(
                 draw,
@@ -991,8 +1051,72 @@ def create_semantic_map_png_page(
     output = io.BytesIO()
     image.save(output, format="PNG", dpi=(220, 220))
     output.seek(0)
-
     return output
+
+
+def report_edge_key(edge: dict) -> str:
+    return f"{edge.get('source')}__{edge.get('target')}__{edge.get('label')}"
+
+
+def build_report_dotted_edge_styles(
+    edges: list[dict],
+    positions: dict[str, dict],
+) -> dict[str, dict]:
+    styles: dict[str, dict] = {}
+
+    dotted_edges = [
+        edge
+        for edge in edges
+        if edge.get("label") == "упоминает термин"
+        and edge.get("source") in positions
+        and edge.get("target") in positions
+    ]
+
+    dotted_edges.sort(
+        key=lambda edge: (
+            positions[edge["source"]]["y"],
+            positions[edge["target"]]["y"],
+            str(edge["target"]),
+        )
+    )
+
+    backward_lane_by_target: dict[str, int] = {}
+    forward_lane_by_target: dict[str, int] = {}
+
+    for index, edge in enumerate(dotted_edges):
+        source = positions[edge["source"]]
+        target = positions[edge["target"]]
+        backward = target["x"] < source["x"]
+
+        if backward:
+            target_key = edge["target"]
+            lane_index = backward_lane_by_target.get(target_key, 0)
+            backward_lane_by_target[target_key] = lane_index + 1
+
+            start_x = source["x"]
+            end_x = target["x"] + target["width"]
+            base_middle = end_x + max(70, (start_x - end_x) / 2)
+            local_offset = ((lane_index % 5) - 2) * 18
+            route_x = base_middle + local_offset
+        else:
+            target_key = edge["target"]
+            lane_index = forward_lane_by_target.get(target_key, 0)
+            forward_lane_by_target[target_key] = lane_index + 1
+
+            start_x = source["x"] + source["width"]
+            end_x = target["x"]
+            base_middle = start_x + max(70, (end_x - start_x) / 2)
+            local_offset = ((lane_index % 5) - 2) * 18
+            route_x = base_middle + local_offset
+
+        styles[report_edge_key(edge)] = {
+            "color": REPORT_DOTTED_EDGE_COLORS[
+                index % len(REPORT_DOTTED_EDGE_COLORS)
+            ],
+            "route_x": route_x,
+        }
+
+    return styles
 
 
 def load_report_font(ImageFont, size: int):
@@ -1014,7 +1138,6 @@ def load_report_font(ImageFont, size: int):
 
 def wrap_text_to_pixels(draw, text: str, font, max_width: int) -> list[str]:
     words = str(text).split()
-
     if not words:
         return [""]
 
@@ -1037,7 +1160,6 @@ def wrap_text_to_pixels(draw, text: str, font, max_width: int) -> list[str]:
             continue
 
         chunk = ""
-
         for char in word:
             candidate_chunk = f"{chunk}{char}"
 
@@ -1099,7 +1221,6 @@ def draw_report_card(
     y = pos["y"]
     width = pos["width"]
     height = pos["height"]
-
     radius = 18
 
     draw.rounded_rectangle(
@@ -1142,6 +1263,7 @@ def draw_report_connection(
     *,
     color: str,
     dashed: bool,
+    route_x: float | None = None,
 ) -> None:
     if source["x"] <= target["x"]:
         start = (
@@ -1162,7 +1284,7 @@ def draw_report_connection(
             target["y"] + target["height"] / 2,
         )
 
-    mid_x = start[0] + (end[0] - start[0]) / 2
+    mid_x = route_x if route_x is not None else start[0] + (end[0] - start[0]) / 2
 
     points = [
         start,
@@ -1185,7 +1307,6 @@ def draw_dashed_polyline(draw, points, *, fill: str, width: int) -> None:
 def draw_dashed_segment(draw, start, end, *, fill: str, width: int) -> None:
     x1, y1 = start
     x2, y2 = end
-
     dash = 10
     gap = 7
 
@@ -1203,6 +1324,7 @@ def draw_dashed_segment(draw, start, end, *, fill: str, width: int) -> None:
 
             draw.line((x, y1, dash_end, y2), fill=fill, width=width)
             x = dash_end + direction * gap
+
     else:
         direction = 1 if y2 >= y1 else -1
         y = y1
@@ -1221,11 +1343,12 @@ def draw_dashed_segment(draw, start, end, *, fill: str, width: int) -> None:
 
 def get_report_term_color(term_node: dict) -> str:
     raw_color = str(term_node.get("color", "")).lower()
+    definitions_count = int(term_node.get("definitions_count", 0) or 0)
 
-    if "dc2626" in raw_color or "red" in raw_color:
+    if definitions_count > 1 or "dc2626" in raw_color or "df4565" in raw_color or "red" in raw_color:
         return "#df4565"
 
-    if "16a34a" in raw_color or "green" in raw_color:
-        return "#169b68"
+    if "d97706" in raw_color:
+        return "#d97706"
 
     return "#646bff"
