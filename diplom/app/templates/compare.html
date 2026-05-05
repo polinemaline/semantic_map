@@ -21,7 +21,7 @@
 
   <form class="entity-search-grid" onsubmit="return false;">
     <div class="entity-search-field">
-      
+      <label class="entity-search-label" for="compare-search-input">Термин с несколькими определениями</label>
       <input
         id="compare-search-input"
         class="entity-search-input"
@@ -53,7 +53,7 @@
 
   {% if conflicts %}
     <div class="table-wrap">
-      <table class="data-table">
+      <table>
         <thead>
           <tr>
             <th>Термин</th>
@@ -71,11 +71,13 @@
               data-search-text="{{ term.name }} {{ term.documents_count }} {{ term.unique_definitions_count }}"
             >
               <td>
-                <strong>{{ term.name }}</strong>
+                <div class="table-title">{{ term.name }}</div>
               </td>
-              <td>{{ term.documents_count }}</td>
               <td>
-                <span class="badge badge-danger">{{ term.unique_definitions_count }}</span>
+                <span class="status-pill">{{ term.documents_count }}</span>
+              </td>
+              <td>
+                <span class="status-pill">{{ term.unique_definitions_count }}</span>
               </td>
               <td>
                 <div class="table-actions">

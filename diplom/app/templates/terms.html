@@ -20,7 +20,7 @@
 
   <form method="get" action="{{ url_for('main.terms') }}" class="entity-search-grid">
     <div class="entity-search-field">
-    
+      <label class="entity-search-label" for="terms-search-input">Название термина</label>
       <input
         id="terms-search-input"
         class="entity-search-input"
@@ -51,7 +51,7 @@
 
   {% if terms %}
     <div class="table-wrap">
-      <table class="data-table">
+      <table>
         <thead>
           <tr>
             <th>Термин</th>
@@ -69,15 +69,13 @@
               data-search-text="{{ term.name }} {{ term.documents_count }} {{ term.definitions_count }}"
             >
               <td>
-                <strong>{{ term.name }}</strong>
+                <div class="table-title">{{ term.name }}</div>
               </td>
-              <td>{{ term.documents_count }}</td>
               <td>
-                {% if term.definitions_count > 1 %}
-                  <span class="badge badge-danger">{{ term.definitions_count }}</span>
-                {% else %}
-                  {{ term.definitions_count }}
-                {% endif %}
+                <span class="status-pill">{{ term.documents_count }}</span>
+              </td>
+              <td>
+                <span class="status-pill">{{ term.definitions_count }}</span>
               </td>
               <td>
                 <div class="table-actions">

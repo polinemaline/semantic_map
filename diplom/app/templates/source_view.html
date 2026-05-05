@@ -4,72 +4,122 @@
 
 {% block content %}
 <style>
-.source-view-stack {
-    display: grid;
-    gap: 22px;
+.source-view-layout {
+  display: grid;
+  gap: 22px;
+}
+
+.source-viewer-card {
+  padding: 28px;
+}
+
+.source-frame-shell {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  min-height: 760px;
+  border-radius: 24px;
+  border: 1px solid rgba(29, 55, 92, 0.10);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
 }
 
 .source-frame {
-    width: 100%;
-    height: 78vh;
-    min-height: 720px;
-    border: 0;
-    border-radius: 24px;
-    background: #ffffff;
+  width: 100%;
+  height: 78vh;
+  min-height: 760px;
+  border: 0;
+  display: block;
+  background: #ffffff;
 }
 
-.source-text {
-    max-height: 78vh;
-    min-height: 620px;
-    overflow: auto;
-    padding: 24px;
-    border-radius: 24px;
-    background: rgba(255,255,255,0.72);
-    border: 1px solid rgba(29, 55, 92, 0.10);
-    color: #152033;
-    line-height: 1.75;
-    white-space: pre-wrap;
+.source-text-preview {
+  position: relative;
+  z-index: 1;
+  max-height: 78vh;
+  min-height: 560px;
+  overflow: auto;
+  padding: 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(29, 55, 92, 0.10);
+  background: rgba(255, 255, 255, 0.80);
+  color: rgba(21, 32, 51, 0.84);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.source-warning {
+  position: relative;
+  z-index: 1;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: rgba(217, 148, 32, 0.12);
+  border: 1px solid rgba(217, 148, 32, 0.20);
+  color: #8a5a0b;
+  font-weight: 750;
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .source-viewer-card {
+    padding: 22px;
+  }
+
+  .source-frame-shell,
+  .source-frame {
+    min-height: 560px;
+  }
 }
 </style>
 
-<div class="source-view-stack">
-    <section class="page-intro glass-panel">
-        <div>
-            <h1>{{ document.title }}</h1>
+<section class="page-intro glass-panel">
+  <div>
+    <h1>{{ document.title }}</h1>
+    <div class="meta-row">
+      <span class="info-pill">Исходный файл: {{ document.original_filename }}</span>
+      <span class="info-pill">Формат: {{ document.file_type|upper }}</span>
+    </div>
+  </div>
+</section>
 
-            <div class="meta-row">
-                <span class="info-pill">Исходный файл: {{ document.original_filename }}</span>
-                <span class="info-pill">Формат: {{ document.file_type|upper }}</span>
-            </div>
-        </div>
-    </section>
+<section class="source-view-layout">
+  <section class="section-card glass-panel source-viewer-card">
+    <div class="section-head">
+      <div>
+        <h2>Просмотр файла</h2>
+      </div>
 
-    <section class="section-card glass-panel">
-        <div class="section-head">
-            <div>
-                <h2>Просмотр файла</h2>
-            </div>
+      <div class="page-actions">
+        <a class="button button-secondary" href="{{ url_for('main.document_detail', document_id=document.id) }}">Назад к документу</a>
+        <a
+          class="button"
+          href="{{ url_for('main.document_source_file', document_id=document.id) }}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Открыть оригинал в новой вкладке
+        </a>
+      </div>
+    </div>
 
-            <div class="page-actions">
-                <a class="button button-secondary" href="{{ url_for('main.document_detail', document_id=document.id) }}">
-                    Назад к документу
-                </a>
+    {% if document.file_type|lower == "pdf" %}
+      <div class="source-frame-shell">
+        <iframe
+          class="source-frame"
+          src="{{ url_for('main.document_source_file', document_id=document.id) }}"
+          title="Просмотр PDF: {{ document.original_filename }}"
+        ></iframe>
+      </div>
+    {% else %}
+      <div class="source-warning">
+        Для DOCX браузер обычно не показывает оригинальный файл внутри страницы.
+        Ниже отображается извлеченный текст документа. Оригинал можно открыть отдельной кнопкой выше.
+      </div>
 
-                <a class="button" href="{{ url_for('main.document_source_file', document_id=document.id) }}" target="_blank">
-                    Открыть оригинал
-                </a>
-            </div>
-        </div>
-
-        {% if document.file_type|lower == "pdf" %}
-            <iframe
-                class="source-frame"
-                src="{{ url_for('main.document_source_file', document_id=document.id) }}"
-                title="{{ document.original_filename }}"
-            ></iframe>
-        {% else %}
-            <div class="source-text">{{ document.full_text }}</div>
-        {% endif %}
-    </section>
-</div>
+      <pre class="source-text-preview">{{ document.full_text }}</pre>
+    {% endif %}
+  </section>
+</section>
 {% endblock %}

@@ -53,7 +53,7 @@
 
   <div class="page-actions">
     <a class="button button-secondary" href="{{ url_for('main.documents') }}">Назад к списку</a>
-    <a class="button button-secondary" href="{{ url_for('main.document_source_file', document_id=document.id) }}">Открыть исходный файл</a>
+    <a class="button button-secondary" href="{{ url_for('main.document_source', document_id=document.id) }}">Открыть исходный файл</a>
     <a class="button button-secondary" href="{{ url_for('main.document_report_docx', document_id=document.id) }}">Сформировать отчет</a>
     <a class="button" href="{{ url_for('main.semantic_map', document_id=document.id) }}">Семантическая карта</a>
 
@@ -78,7 +78,7 @@
 
   <form class="entity-search-grid" onsubmit="return false;">
     <div class="entity-search-field">
-      
+      <label class="entity-search-label" for="document-terms-search-input">Термин, извлеченный из документа</label>
       <input
         id="document-terms-search-input"
         class="entity-search-input"
@@ -167,9 +167,9 @@
       <span>Скачать DOCX с определениями, конфликтами и семантической картой.</span>
     </a>
 
-    <a class="link-card" href="{{ url_for('main.document_source_file', document_id=document.id) }}">
+    <a class="link-card" href="{{ url_for('main.document_source', document_id=document.id) }}">
       <strong>↗ Открыть исходный файл</strong>
-      <span>Посмотреть загруженный документ или его текстовую версию на сайте.</span>
+      <span>Открыть страницу просмотра исходного документа и при необходимости открыть оригинал в новой вкладке.</span>
     </a>
 
     <a class="link-card" href="{{ url_for('main.compare') }}">
