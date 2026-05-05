@@ -569,6 +569,8 @@ def _term_node_color(term_stats: dict[str, Any], selected: bool = False) -> str:
         return "#dc2626"
     if selected:
         return "#d97706"
+    if int(term_stats.get("documents_count", 0)) > 1:
+        return "#16a34a"
     return "#2563eb"
 
 
@@ -657,28 +659,29 @@ def build_semantic_map_data(
                 "definitions_count": int(selected_term["definitions_count"]),
             },
         )
-
+        has_conflict = int(selected_term_stats["definitions_count"]) > 1
+        term_color = _term_node_color(selected_term_stats, selected=True)
         main_term_node_id = f"term-{term_id}"
+
         add_node(
             main_term_node_id,
             selected_term["name"],
             "term",
-            _term_node_color(selected_term_stats, selected=True),
+            term_color,
             definitions_count=int(selected_term_stats["definitions_count"]),
             documents_count=int(selected_term_stats["documents_count"]),
             selected=True,
         )
 
         doc_ids: set[int] = set()
-        definition_node_ids: dict[tuple[int, str], str] = {}
-        related_term_ids: set[int] = set()
-        related_term_stats_cache: dict[int, dict[str, Any]] = {}
+        definition_node_ids: dict[str, str] = {}
+        definition_documents_map: dict[str, set[int]] = {}
 
         for occurrence in occurrences:
             doc_id = int(occurrence["document_id"])
             doc_ids.add(doc_id)
-
             document_node_id = f"document-{doc_id}"
+
             add_node(
                 document_node_id,
                 occurrence["document_title"],
@@ -694,73 +697,43 @@ def build_semantic_map_data(
             )
 
             def_key = normalize_for_lookup(occurrence["definition_text"])
-            definition_map_key = (doc_id, def_key)
-            if definition_map_key not in definition_node_ids:
-                definition_node_ids[definition_map_key] = _definition_node_id(
+            if def_key not in definition_node_ids:
+                definition_node_ids[def_key] = _definition_node_id(
                     "term-mode",
                     term_id,
-                    doc_id,
                     def_key,
                 )
+                definition_documents_map[def_key] = set()
 
-            definition_node_id = definition_node_ids[definition_map_key]
+            definition_documents_map[def_key].add(doc_id)
+
+            definition_node_id = definition_node_ids[def_key]
             add_node(
                 definition_node_id,
                 occurrence["definition_text"],
                 "definition",
                 "#7c3aed",
-                document_id=doc_id,
                 term_id=term_id,
+                definition_normalized=def_key,
             )
             add_edge(
                 document_node_id,
                 definition_node_id,
                 "содержит определение",
-                "#94a3b8",
+                "#dc2626" if has_conflict else "#94a3b8",
             )
 
-            document_occurrences = get_document_occurrences(doc_id)
-            for other_row in document_occurrences:
-                other_term_id = int(other_row["term_id"])
-                if other_term_id == term_id:
-                    continue
-
-                if _term_present_in_definition(
-                    other_row["term_name"],
-                    occurrence["definition_text"],
-                ):
-                    related_term_ids.add(other_term_id)
-                    if other_term_id not in related_term_stats_cache:
-                        other_term = get_term(other_term_id)
-                        if not other_term:
-                            continue
-                        related_term_stats_cache[other_term_id] = {
-                            "documents_count": int(other_term["documents_count"]),
-                            "definitions_count": int(other_term["definitions_count"]),
-                        }
-
-                    related_stats = related_term_stats_cache[other_term_id]
-                    related_term_node_id = f"related-term-{other_term_id}"
-                    add_node(
-                        related_term_node_id,
-                        other_row["term_name"],
-                        "related_term",
-                        _term_node_color(related_stats, selected=False),
-                        definitions_count=int(related_stats["definitions_count"]),
-                        documents_count=int(related_stats["documents_count"]),
-                    )
-                    add_edge(
-                        definition_node_id,
-                        related_term_node_id,
-                        "упоминает термин",
-                        "#f59e0b",
-                    )
+        for def_key, definition_node_id in definition_node_ids.items():
+            for node in nodes:
+                if node["id"] == definition_node_id:
+                    node["document_ids"] = sorted(definition_documents_map.get(def_key, set()))
+                    break
 
         summary = {
             "mode": "term",
             "title": selected_term["name"],
             "documents_count": len(doc_ids),
-            "terms_count": 1 + len(related_term_ids),
+            "terms_count": 1,
             "definitions_count": len(definition_node_ids),
             "links_count": len(edges),
         }
@@ -786,7 +759,6 @@ def build_semantic_map_data(
     add_node(document_node_id, document["title"], "document", "#1d4ed8")
 
     definition_node_ids: dict[str, str] = {}
-
     for occurrence in occurrences:
         t_id = int(occurrence["term_id"])
         term_stats = term_stats_map.get(
@@ -796,7 +768,6 @@ def build_semantic_map_data(
                 "definitions_count": 1,
             },
         )
-
         term_node_id = f"term-{t_id}"
         add_node(
             term_node_id,
@@ -806,12 +777,7 @@ def build_semantic_map_data(
             definitions_count=int(term_stats["definitions_count"]),
             documents_count=int(term_stats["documents_count"]),
         )
-        add_edge(
-            document_node_id,
-            term_node_id,
-            "содержит термин",
-            "#94a3b8",
-        )
+        add_edge(document_node_id, term_node_id, "содержит термин", "#94a3b8")
 
         def_key = normalize_for_lookup(occurrence["definition_text"])
         if def_key not in definition_node_ids:
@@ -832,7 +798,7 @@ def build_semantic_map_data(
             term_node_id,
             definition_node_id,
             "имеет определение",
-            "#94a3b8",
+            "#16a34a" if int(term_stats["definitions_count"]) <= 1 else "#dc2626",
         )
 
     for occurrence in occurrences:
