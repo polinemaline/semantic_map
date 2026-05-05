@@ -1,92 +1,609 @@
 {% set navigation = [
-    ('main.index', 'Главная'),
-    ('main.upload', 'Загрузка'),
-    ('main.documents', 'Документы'),
-    ('main.terms', 'Термины'),
-    ('main.compare', 'Сравнение'),
-    ('main.semantic_map', 'Семантическая карта')
+  ('main.index', 'Главная'),
+  ('main.upload', 'Загрузка'),
+  ('main.documents', 'Документы'),
+  ('main.terms', 'Термины'),
+  ('main.compare', 'Сравнение'),
+  ('main.semantic_map', 'Семантическая карта')
 ] %}
-
 {% set auth_page = request.endpoint in ['main.login', 'main.register'] %}
 
 <!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Semantic Map{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Semantic Map{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <style>
+    .user-badge {
+      border: 0;
+      cursor: pointer;
+      text-align: left;
+      background: transparent;
+      padding: 0;
+    }
+
+    .user-avatar-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: inherit;
+    }
+
+    .profile-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.22);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    .profile-modal-overlay.is-open {
+      display: flex;
+    }
+
+    .profile-modal {
+      width: min(560px, calc(100vw - 48px));
+      max-height: min(86vh, 860px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 26px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(29, 55, 92, 0.12);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.86),
+        0 28px 70px rgba(43, 64, 96, 0.24);
+    }
+
+    .profile-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
+      flex: 0 0 auto;
+    }
+
+    .profile-modal-title {
+      margin: 0;
+      color: #142033;
+      font-size: 28px;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .profile-modal-subtitle {
+      margin-top: 6px;
+      color: rgba(21, 32, 51, 0.58);
+      font-size: 14px;
+      line-height: 1.5;
+      font-weight: 650;
+    }
+
+    .profile-modal-close {
+      width: 48px;
+      height: 48px;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 1px solid rgba(29, 55, 92, 0.10);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.76);
+      color: rgba(21, 32, 51, 0.68);
+      cursor: pointer;
+      font-size: 30px;
+      line-height: 1;
+      transition: 0.18s ease;
+    }
+
+    .profile-modal-close:hover {
+      background: rgba(255, 255, 255, 1);
+      color: #152033;
+      transform: translateY(-1px);
+    }
+
+    .profile-modal-grid {
+      display: grid;
+      gap: 22px;
+      overflow-y: auto;
+      padding-right: 6px;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
+
+    .profile-modal-grid::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .profile-modal-grid::-webkit-scrollbar-track {
+      background: rgba(230, 236, 246, 0.9);
+      border-radius: 999px;
+    }
+
+    .profile-modal-grid::-webkit-scrollbar-thumb {
+      background: rgba(125, 145, 178, 0.72);
+      border-radius: 999px;
+      border: 2px solid rgba(230, 236, 246, 0.9);
+    }
+
+    .profile-form-card {
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(29, 55, 92, 0.08);
+      background: rgba(247, 250, 255, 0.82);
+    }
+
+    .profile-form-card h3 {
+      margin: 0 0 16px;
+      color: #142033;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .profile-photo-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .profile-photo-preview {
+      width: 82px;
+      height: 82px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 30px;
+      font-weight: 850;
+      background: linear-gradient(135deg, #5a8cff 0%, #25c4b3 100%);
+      box-shadow: 0 16px 34px rgba(70, 121, 238, 0.20);
+    }
+
+    .profile-photo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .profile-avatar-upload {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .profile-file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .profile-file-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .profile-file-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(29, 55, 92, 0.10);
+      background: rgba(255, 255, 255, 0.92);
+      color: #3d72f6;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      text-decoration: none;
+      transition: 0.18s ease;
+      box-shadow: 0 8px 20px rgba(43, 64, 96, 0.08);
+    }
+
+    .profile-file-button:hover {
+      transform: translateY(-1px);
+      background: #ffffff;
+      border-color: rgba(61, 114, 246, 0.20);
+      box-shadow: 0 12px 24px rgba(43, 64, 96, 0.12);
+    }
+
+    .profile-file-name {
+      color: rgba(21, 32, 51, 0.62);
+      font-size: 14px;
+      line-height: 1.5;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .profile-readonly-input {
+      background: rgba(237, 243, 251, 0.8) !important;
+      color: rgba(21, 32, 51, 0.58) !important;
+      cursor: not-allowed;
+    }
+
+    .password-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-input-wrap input {
+      padding-right: 54px;
+    }
+
+    .password-eye-button {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      width: 38px;
+      height: 38px;
+      transform: translateY(-50%);
+      border: 1px solid rgba(29, 55, 92, 0.10);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.74);
+      color: rgba(21, 32, 51, 0.62);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      line-height: 1;
+      transition: 0.18s ease;
+    }
+
+    .password-eye-button:hover {
+      background: rgba(255, 255, 255, 1);
+      color: #245ad8;
+      border-color: rgba(61, 114, 246, 0.20);
+    }
+
+    .profile-form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .profile-password-note {
+      margin: -4px 0 12px;
+      color: rgba(21, 32, 51, 0.56);
+      font-size: 13px;
+      line-height: 1.5;
+      font-weight: 650;
+    }
+
+    @media (max-width: 720px) {
+      .profile-modal-overlay {
+        padding: 12px;
+      }
+
+      .profile-modal {
+        width: calc(100vw - 24px);
+        max-height: calc(100vh - 24px);
+        padding: 20px;
+      }
+
+      .profile-photo-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .profile-file-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
 </head>
 
 <body>
-    <div class="app-bg">
-        <div class="app-bg-orb app-bg-orb-1"></div>
-        <div class="app-bg-orb app-bg-orb-2"></div>
-        <div class="app-bg-orb app-bg-orb-3"></div>
-        <div class="app-bg-grid"></div>
-        <div class="app-bg-noise"></div>
-    </div>
+  <div class="app-bg" aria-hidden="true">
+    <div class="app-bg-orb app-bg-orb-1"></div>
+    <div class="app-bg-orb app-bg-orb-2"></div>
+    <div class="app-bg-orb app-bg-orb-3"></div>
+    <div class="app-bg-grid"></div>
+    <div class="app-bg-noise"></div>
+  </div>
 
-    {% if not auth_page %}
-        <header class="site-header">
-            <div class="container">
-                <div class="site-header-shell site-header-main">
-                    <a class="user-badge" href="{{ url_for('main.index') }}">
-                        <span class="user-avatar">
-                            {{ g.current_user["email"][0]|upper }}
-                        </span>
-                        <span class="user-badge-copy">
-                            <span class="user-badge-name">{{ g.current_user["email"] }}</span>
-                        </span>
-                    </a>
-
-                    <nav class="nav">
-                        {% for endpoint, label in navigation %}
-                            <a
-                                class="nav-link
-                                    {% if request.endpoint == endpoint %}
-                                        is-active
-                                    {% endif %}
-                                    {% if endpoint == 'main.documents' and request.endpoint in ['main.document_detail', 'main.document_source'] %}
-                                        is-active
-                                    {% endif %}
-                                    {% if endpoint == 'main.terms' and request.endpoint in ['main.term_detail'] %}
-                                        is-active
-                                    {% endif %}
-                                "
-                                href="{{ url_for(endpoint) }}"
-                            >
-                                {{ label }}
-                            </a>
-                        {% endfor %}
-                    </nav>
-
-                    <div class="header-actions">
-                        <form method="post" action="{{ url_for('main.logout') }}" class="inline-form">
-                            <button class="button button-secondary" type="submit">Выйти</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </header>
-    {% endif %}
-
-    <main class="{% if auth_page %}app-main app-main-auth{% else %}app-main{% endif %}">
-        <div class="{% if auth_page %}container auth-container{% else %}container{% endif %}">
-            {% with messages = get_flashed_messages(with_categories=True) %}
-                {% if messages %}
-                    <div class="flash-stack">
-                        {% for category, message in messages %}
-                            <div class="flash flash-{{ category }}">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    </div>
+  {% if not auth_page %}
+    <header class="site-header">
+      <div class="container">
+        <div class="site-header-shell site-header-main">
+          {% if profile_user %}
+            <button class="user-badge" type="button" id="profile-open-button" aria-haspopup="dialog">
+              <span class="user-avatar">
+                {% if profile_user.avatar_url %}
+                  <img class="user-avatar-image" src="{{ profile_user.avatar_url }}" alt="Фото профиля">
+                {% else %}
+                  {{ profile_user.display_name[0]|upper }}
                 {% endif %}
-            {% endwith %}
+              </span>
 
-            {% block content %}{% endblock %}
+              <span class="user-badge-copy">
+                <span class="user-badge-name">{{ profile_user.display_name }}</span>
+                <span class="table-subtitle">{{ profile_user.email }}</span>
+              </span>
+            </button>
+          {% endif %}
+
+          <nav class="nav" aria-label="Основная навигация">
+            {% for endpoint, label in navigation %}
+              <a
+                class="nav-link {% if request.endpoint == endpoint %}is-active{% endif %}"
+                href="{{ url_for(endpoint) }}"
+              >
+                {{ label }}
+              </a>
+            {% endfor %}
+          </nav>
+
+          <div class="header-actions">
+            <form method="post" action="{{ url_for('main.logout') }}">
+              <button class="button button-secondary" type="submit">Выйти</button>
+            </form>
+          </div>
         </div>
-    </main>
+      </div>
+    </header>
+  {% endif %}
+
+  <main class="app-main {% if auth_page %}app-main-auth{% endif %}">
+    <div class="container {% if auth_page %}auth-container{% endif %}">
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  {% if not auth_page and profile_user %}
+    <div class="profile-modal-overlay" id="profile-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+      <section class="profile-modal">
+        <div class="profile-modal-head">
+          <div>
+            <h2 class="profile-modal-title" id="profile-modal-title">Профиль</h2>
+            
+          </div>
+
+          <button class="profile-modal-close" type="button" id="profile-modal-close" aria-label="Закрыть">×</button>
+        </div>
+
+        <div class="profile-modal-grid">
+          <form
+            class="profile-form-card form"
+            method="post"
+            action="{{ url_for('profile.update_profile') }}"
+            enctype="multipart/form-data"
+          >
+          
+
+            <div class="profile-photo-row">
+              <div class="profile-photo-preview">
+                {% if profile_user.avatar_url %}
+                  <img src="{{ profile_user.avatar_url }}" alt="Фото профиля">
+                {% else %}
+                  {{ profile_user.display_name[0]|upper }}
+                {% endif %}
+              </div>
+
+              <div class="profile-avatar-upload">
+                <label for="profile-avatar">Фото</label>
+
+                <input
+                  id="profile-avatar"
+                  class="profile-file-input"
+                  type="file"
+                  name="avatar"
+                  accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                >
+
+                <div class="profile-file-row">
+                  <label class="profile-file-button" for="profile-avatar">Загрузить фото</label>
+                  <span class="profile-file-name" id="profile-avatar-filename">Файл не выбран</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="profile-display-name">Имя</label>
+              <input
+                id="profile-display-name"
+                type="text"
+                name="display_name"
+                value="{{ profile_user.display_name }}"
+                autocomplete="name"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="profile-email">Почта</label>
+              <input
+                id="profile-email"
+                class="profile-readonly-input"
+                type="email"
+                value="{{ profile_user.email }}"
+                readonly
+              >
+            </div>
+
+            <div class="profile-form-actions">
+              <button class="button" type="submit">Сохранить профиль</button>
+            </div>
+          </form>
+
+          <form
+            class="profile-form-card form"
+            method="post"
+            action="{{ url_for('profile.change_password') }}"
+          >
+            <h3>Изменить пароль</h3>
+            <p class="profile-password-note">
+              Новый пароль должен быть не короче 6 символов и не должен совпадать с текущим.
+            </p>
+
+            <div class="form-group">
+              <label for="profile-current-password">Текущий пароль</label>
+              <div class="password-input-wrap">
+                <input
+                  id="profile-current-password"
+                  type="password"
+                  name="current_password"
+                  autocomplete="current-password"
+                >
+                <button
+                  class="password-eye-button"
+                  type="button"
+                  data-password-toggle="profile-current-password"
+                  aria-label="Показать пароль"
+                >👁</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="profile-new-password">Новый пароль</label>
+              <div class="password-input-wrap">
+                <input
+                  id="profile-new-password"
+                  type="password"
+                  name="new_password"
+                  autocomplete="new-password"
+                >
+                <button
+                  class="password-eye-button"
+                  type="button"
+                  data-password-toggle="profile-new-password"
+                  aria-label="Показать пароль"
+                >👁</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="profile-new-password-repeat">Повторите новый пароль</label>
+              <div class="password-input-wrap">
+                <input
+                  id="profile-new-password-repeat"
+                  type="password"
+                  name="new_password_repeat"
+                  autocomplete="new-password"
+                >
+                <button
+                  class="password-eye-button"
+                  type="button"
+                  data-password-toggle="profile-new-password-repeat"
+                  aria-label="Показать пароль"
+                >👁</button>
+              </div>
+            </div>
+
+            <div class="profile-form-actions">
+              <button class="button" type="submit">Изменить пароль</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+  {% endif %}
+
+  <script>
+    function initPasswordToggles() {
+      document.querySelectorAll("[data-password-toggle]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const targetId = button.dataset.passwordToggle;
+          const input = document.getElementById(targetId);
+
+          if (!input) return;
+
+          const isPassword = input.type === "password";
+          input.type = isPassword ? "text" : "password";
+          button.textContent = isPassword ? "🙈" : "👁";
+          button.setAttribute(
+            "aria-label",
+            isPassword ? "Скрыть пароль" : "Показать пароль"
+          );
+        });
+      });
+    }
+
+    function initProfileModal() {
+      const openButton = document.getElementById("profile-open-button");
+      const overlay = document.getElementById("profile-modal-overlay");
+      const closeButton = document.getElementById("profile-modal-close");
+
+      if (!openButton || !overlay || !closeButton) return;
+
+      function openModal() {
+        overlay.classList.add("is-open");
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeModal() {
+        overlay.classList.remove("is-open");
+        document.body.style.overflow = "";
+      }
+
+      openButton.addEventListener("click", openModal);
+      closeButton.addEventListener("click", closeModal);
+
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+          closeModal();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && overlay.classList.contains("is-open")) {
+          closeModal();
+        }
+      });
+    }
+
+    function initProfileAvatarInput() {
+      const input = document.getElementById("profile-avatar");
+      const filenameNode = document.getElementById("profile-avatar-filename");
+
+      if (!input || !filenameNode) return;
+
+      input.addEventListener("change", () => {
+        if (input.files && input.files.length > 0) {
+          filenameNode.textContent = input.files[0].name;
+        } else {
+          filenameNode.textContent = "Файл не выбран";
+        }
+      });
+    }
+
+    initPasswordToggles();
+    initProfileModal();
+    initProfileAvatarInput();
+  </script>
 </body>
 </html>

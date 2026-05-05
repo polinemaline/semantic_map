@@ -4,6 +4,7 @@ from flask import Flask
 
 from .config import Config
 from .db import close_db, init_db
+from .profile_routes import profile_bp
 from .routes import bp
 
 
@@ -21,4 +22,6 @@ def create_app() -> Flask:
         init_db()
 
     app.register_blueprint(bp)
+    app.register_blueprint(profile_bp)
+
     return app

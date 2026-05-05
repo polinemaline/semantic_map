@@ -4,56 +4,69 @@
 
 {% block content %}
 <section class="auth-page">
-    <div class="auth-card glass-panel auth-card-minimal">
-        <h1>Регистрация</h1>
+  <section class="auth-card glass-panel auth-card-minimal">
+    <h1>Регистрация</h1>
 
-        <form method="post" class="form auth-form">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value="{{ email_value }}"
-                    placeholder="Введите email"
-                    required
-                    autocomplete="email"
-                >
-            </div>
+    <form class="form auth-form" method="post">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          name="email"
+          value="{{ email_value }}"
+          autocomplete="email"
+          required
+        >
+      </div>
 
-            <div class="form-group">
-                <label for="password">Пароль</label>
-                <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    placeholder="Введите пароль"
-                    required
-                    autocomplete="new-password"
-                >
-            </div>
+      <div class="form-group">
+        <label for="password">Пароль</label>
+        <div class="password-input-wrap">
+          <input
+            id="password"
+            type="password"
+            name="password"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          >
+          <button
+            class="password-eye-button"
+            type="button"
+            data-password-toggle="password"
+            aria-label="Показать пароль"
+          >👁</button>
+        </div>
+      </div>
 
-            <div class="form-group">
-                <label for="password_repeat">Повторите пароль</label>
-                <input
-                    id="password_repeat"
-                    name="password_repeat"
-                    type="password"
-                    placeholder="Повторите пароль"
-                    required
-                    autocomplete="new-password"
-                >
-            </div>
+      <div class="form-group">
+        <label for="password_repeat">Повторите пароль</label>
+        <div class="password-input-wrap">
+          <input
+            id="password_repeat"
+            type="password"
+            name="password_repeat"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          >
+          <button
+            class="password-eye-button"
+            type="button"
+            data-password-toggle="password_repeat"
+            aria-label="Показать пароль"
+          >👁</button>
+        </div>
+      </div>
 
-            <button type="submit" class="button auth-submit auth-submit-primary">
-                Зарегистрироваться
-            </button>
+      <button class="button auth-submit auth-submit-primary" type="submit">Зарегистрироваться</button>
 
-            <div class="auth-switch-row">
-                <span>Есть аккаунт?</span>
-                <a href="{{ url_for('main.login') }}">Войти</a>
-            </div>
-        </form>
-    </div>
+      <div class="auth-switch-row">
+        Есть аккаунт?
+        <a href="{{ url_for('main.login') }}">Войти</a>
+      </div>
+    </form>
+  </section>
 </section>
 {% endblock %}
