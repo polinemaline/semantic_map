@@ -27,14 +27,14 @@
     <div class="meta-row">
       <span class="info-pill">Файл: {{ document.original_filename }}</span>
       <span class="info-pill">Формат: {{ document.file_type|upper }}</span>
-      <span class="info-pill">Найдено терминов: {{ document.extracted_pairs_count }}</span>
+      <span class="info-pill">Найдено терминов: {{ document.distinct_terms_count }}</span>
     </div>
   </div>
 </section>
 
 <section class="stats-grid document-detail-block">
   <article class="stat-card glass-panel">
-    <div class="stat-value">{{ document.extracted_pairs_count }}</div>
+    <div class="stat-value">{{ document.distinct_terms_count }}</div>
     <div class="stat-label">Найдено терминов</div>
   </article>
 
@@ -149,35 +149,7 @@
   {% endif %}
 </section>
 
-<section class="section-card glass-panel document-detail-block">
-  <div class="section-head">
-    <div>
-      <h2>Что можно сделать дальше</h2>
-    </div>
-  </div>
 
-  <div class="link-grid">
-    <a class="link-card" href="{{ url_for('main.semantic_map', document_id=document.id) }}">
-      <strong>◉ Построить карту</strong>
-      <span>Открыть визуализацию терминов и определений только по этому документу.</span>
-    </a>
-
-    <a class="link-card" href="{{ url_for('main.document_report_docx', document_id=document.id) }}">
-      <strong>≣ Сформировать отчет</strong>
-      <span>Скачать DOCX с определениями, конфликтами и семантической картой.</span>
-    </a>
-
-    <a class="link-card" href="{{ url_for('main.document_source', document_id=document.id) }}">
-      <strong>↗ Открыть исходный файл</strong>
-      <span>Открыть страницу просмотра исходного документа и при необходимости открыть оригинал в новой вкладке.</span>
-    </a>
-
-    <a class="link-card" href="{{ url_for('main.compare') }}">
-      <strong>! Открыть сравнение</strong>
-      <span>Посмотреть конфликтующие термины между документами.</span>
-    </a>
-  </div>
-</section>
 
 {% if occurrences %}
 <script src="{{ url_for('static', filename='js/entity_autocomplete.js') }}"></script>

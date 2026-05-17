@@ -155,14 +155,23 @@ def get_document(document_id: int):
     return db.execute(
         """
         SELECT
-            id, title, original_filename, saved_filename, file_type,
-            full_text, extracted_pairs_count, created_at
-        FROM documents
-        WHERE id = ?
+            d.id,
+            d.title,
+            d.original_filename,
+            d.saved_filename,
+            d.file_type,
+            d.full_text,
+            d.extracted_pairs_count,
+            d.created_at,
+            COUNT(o.id) AS occurrences_count,
+            COUNT(DISTINCT o.term_id) AS distinct_terms_count
+        FROM documents d
+        LEFT JOIN term_occurrences o ON o.document_id = d.id
+        WHERE d.id = ?
+        GROUP BY d.id
         """,
         (document_id,),
     ).fetchone()
-
 
 def get_document_occurrences(document_id: int):
     db = get_db()
