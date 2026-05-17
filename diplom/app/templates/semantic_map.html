@@ -26,8 +26,6 @@
 
 .map-top-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.7fr);
-  gap: 22px;
   position: relative;
   z-index: 50;
 }
@@ -1656,8 +1654,8 @@ function initDefinitionTooltips() {
       </div>
     `;
 
-    tooltip.style.left = `${Math.min(window.innerWidth - 372, event.clientX + 16)}px`;
-    tooltip.style.top = `${Math.min(window.innerHeight - 180, event.clientY + 16)}px`;
+    tooltip.style.left = `${Math.min(window.innerWidth - 372, event.clientX - 500)}px`;
+    tooltip.style.top = `${Math.min(window.innerHeight - 180, event.clientY - 180)}px`;
 
     tooltip.classList.add("is-visible");
   }

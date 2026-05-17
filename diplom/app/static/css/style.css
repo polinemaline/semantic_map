@@ -778,7 +778,6 @@ tbody tr:hover td {
 
 .upload-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.75fr);
     gap: 22px;
 }
 

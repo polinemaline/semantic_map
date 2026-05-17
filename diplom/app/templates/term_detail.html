@@ -84,14 +84,6 @@
                 <a class="button button-secondary" href="{{ url_for('main.terms') }}">Назад к терминам</a>
                 <a class="button" href="{{ url_for('main.semantic_map', term_id=term.id) }}">Семантическая карта</a>
 
-                <form
-                    method="post"
-                    action="{{ url_for('main.term_delete', term_id=term.id) }}"
-                    onsubmit="return confirm('Удалить термин {{ term.name }}?');"
-                    class="inline-form"
-                >
-                    <button type="submit" class="button button-danger">Удалить термин</button>
-                </form>
             </div>
         </div>
     </section>

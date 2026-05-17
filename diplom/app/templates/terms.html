@@ -57,7 +57,7 @@
             <th>Термин</th>
             <th>Документов</th>
             <th>Разных определений</th>
-            <th>Действия</th>
+            <th>Карточка</th>
           </tr>
         </thead>
         <tbody>
@@ -80,14 +80,6 @@
               <td>
                 <div class="table-actions">
                   <a class="button button-small" href="{{ url_for('main.term_detail', term_id=term.id) }}">Открыть</a>
-                  <form
-                    method="post"
-                    action="{{ url_for('main.term_delete', term_id=term.id) }}"
-                    style="display: inline;"
-                    onsubmit="return confirm('Удалить термин «{{ term.name }}»?');"
-                  >
-                    <button class="button button-small button-danger" type="submit">Удалить</button>
-                  </form>
                 </div>
               </td>
             </tr>
